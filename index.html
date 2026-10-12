@@ -362,10 +362,10 @@ function startRest(w){
 }
 function maybeBackFromBreak(w){
   if((w.status==='break'||w.status==='assist'||w.status==='rest')&&!bannedNames.has(w.name)&&state.minute>=w.nextStatusChange){
-    w.visible=true; w.task={kind:'enterDoor',tx:DOORS.crew.x+DOORS.crew.w+40,ty:DOORS.crew.y-40};
+    const wasResting=w.status==='rest';
+    w.visible=true; w.task={kind:'enterDoor',tx:DOORS.crew.x+DOORS.crew.w+40,ty:DOORS.crew.y-40,resumeFreight:true};
     w.status='work'; w.fatigue=Math.max(0,w.fatigue-30); // Reduce fatigue
-    log(`${w.name} returned${w.status==='rest'?'. Fatigue reduced.':'.'}`);
-    setTimeout(()=>{ if(!w.task) assignShuttle(w); },150);
+    log(`${w.name} returned${wasResting?'. Fatigue reduced.':'.'}`);
   }
 }
 function moveTowards(w,tx,ty,sprint=false){
@@ -425,6 +425,8 @@ function simMinute(){
       w.nextStatusChange=state.minute; log(`${w.name} headed out. Thanks!`); bannedNames.add(w.name);
     }
   });
+  // Check every worker, including those hidden outside the backroom.
+  state.crew.forEach(maybeBackFromBreak);
   // Breaks
   state.crew.forEach(w=>{
     if(!w.visible||w.status==='sick') return;
@@ -482,7 +484,7 @@ function assignShuttle(w){
 }
 function stepTask(w){
   const t=w.task; if(!t) return;
-  if(t.kind==='enterDoor'){ if(moveTowards(w,t.tx,t.ty,true)){ w.task=null; w.busy=false; } return; }
+  if(t.kind==='enterDoor'){ if(moveTowards(w,t.tx,t.ty,true)){ w.task=null; w.busy=false; if(t.resumeFreight) assignShuttle(w); } return; }
   if(t.kind==='exitDoor'){ if(moveTowards(w,t.tx,t.ty,true)){ w.visible=false; w.task=null; w.busy=false; } return; }
   if(t.kind==='bringPallet'){ if(moveTowards(w,t.tx,t.ty)){ assignShuttle(w); } return; }
   if(t.kind==='workPallet'){ shuttleBox(w); return; }
