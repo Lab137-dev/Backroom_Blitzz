@@ -16,4 +16,11 @@ for(const kind of KINDS)for(const item of MERCH[kind])for(let pattern=0;pattern<
 for(let i=0;i<50;i++){reset();const b=front();if(!MERCH[b.kind].includes(b.item)||!ITEM_COLORS.includes(b.color))throw Error('merchandise mapping');}
 reset();const keyTime=elapsed,keyBoxes=boxes.length;openKey();update(1);sort(front().kind);if(elapsed!==keyTime||boxes.length!==keyBoxes||score!==0)throw Error('key did not freeze gameplay');closeKey();update(.01);if(elapsed<=keyTime)throw Error('key did not resume');
 reset();draw();if(score||resolved||lives!==5||mode!=='playing')throw Error('restart');
+
+const scheduled=[];const param={value:0,setValueAtTime(v,t){if(!Number.isFinite(v)||!Number.isFinite(t))throw Error('invalid audio');scheduled.push([v,t]);},exponentialRampToValueAtTime(v,t){if(v<=0||!Number.isFinite(t))throw Error('invalid ramp');scheduled.push([v,t]);}};
+const node=()=>({frequency:param,gain:param,Q:{value:0},connect(){},start(){},stop(){}});
+audioCtx={currentTime:0,sampleRate:44100,state:'running',createOscillator:node,createGain:node,createBuffer:(n,len)=>({getChannelData:()=>new Float32Array(len)}),createBufferSource:node,createBiquadFilter:node};sound=true;
+for(const name of ['throw','land','combo','mistake','pizza','win','loss','on']){combo=10;const n=scheduled.length;playSound(name);if(scheduled.length===n)throw Error('sound not scheduled: '+name);}
+for(const kind of KINDS)playSound('land',kind);
+sound=false;const count=scheduled.length;playSound('win');if(count!==scheduled.length)throw Error('mute failed');
 `,sandbox);console.log('PASS: correct/wrong sort, misses, pause, pizza, full truck win, loss, restart, renderer calls');
