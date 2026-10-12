@@ -1,868 +1,142 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<title>Backroom Unload — v16.1</title>
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Backroom Blitzz • After Hours v5</title>
 <style>
-:root{--bg:#0f1320;--panel:#151a2b;--accent:#59d;--accent2:#7ddc83;--text:#e8ecff;--muted:#9aa3c7;}
-*{box-sizing:border-box} html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-#wrap{height:100%;display:grid;grid-template-rows:auto 1fr auto}
-#topbar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;padding:.5rem;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(0,0,0,.1))}
-.ticker{grid-column:1/-1;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.08));border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:.6rem .8rem;font-weight:800;font-size:1.25rem}
-#hud{display:flex;gap:.5rem;flex-wrap:wrap}
-.chip{background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:.35rem .6rem;font-size:.9rem}
-#buttons{display:flex;gap:.5rem;justify-content:center;align-items:center;flex-wrap:wrap}
-button{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:.6rem .9rem;font-weight:700;letter-spacing:.2px;box-shadow:0 6px 16px rgba(80,120,255,.25);transition:transform 0.1s, box-shadow 0.2s}
-button:hover{box-shadow:0 8px 20px rgba(80,120,255,.35);transform:scale(1.05)}
-button.secondary{background:var(--panel);color:var(--text);border:1px solid rgba(255,255,255,.08);box-shadow:none}
-button.secondary:hover{box-shadow:0 4px 12px rgba(255,255,255,.1)}
-button:active{transform:translateY(1px)}
-#gamepanel{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:.5rem;padding:.5rem}
-#leftpanel{background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:.6rem;display:flex;flex-direction:column;gap:.6rem}
-#log{background:rgba(255,255,255,.04);border-radius:10px;padding:.5rem;height:260px;overflow:auto;font-size:.9rem;color:var(--muted)}
-#canvaswrap{position:relative;background:#1a2036;border:1px solid rgba(255,255,255,.08);border-radius:14px}
-#game{display:block;width:100%;height:100%}
-.row{display:flex;align-items:center;gap:.5rem}
-.row label{width:150px;color:var(--muted);font-size:.9rem}
-.bar{height:10px;background:#222842;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.06)}
-.fill{height:100%;background:var(--accent2);transition:width .25s linear}
-.pill{padding:.1rem .5rem;border-radius:999px;font-weight:700;font-size:.8rem}
-.ok{background:#1f3b2b;color:#88e297}.warn{background:#3b2f1f;color:#f6d28a}.bad{background:#3b1f29;color:#f199a7}
-#footer{padding:.5rem;text-align:center;color:var(--muted);font-size:.85rem}
-.overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:9999}
-.overlay .panel{background:#151a2b;border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:1rem 1.25rem;max-width:620px;text-align:center;color:#e8ecff;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-.overlay .panel h3{margin:0 0 .25rem 0;font-size:1.35rem}
-.overlay .panel p{margin:.25rem 0 0 0;color:#9aa3c7}
-#tooltip{position:absolute;display:none;background:#151a2b;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:.5rem;font-size:.85rem;color:#e8ecff;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:1000}
-@media (max-width:900px){#gamepanel{grid-template-columns:1fr}#leftpanel{order:2}}
-</style>
-</head>
-<body>
-<div id="wrap">
-  <div id="topbar">
-    <div id="ticker" class="ticker">Ready for your shift…</div>
-    <div id="hud">
-      <div class="chip">Day: <b id="day">1</b></div>
-      <div class="chip">Time: <b id="time">8:00 AM</b></div>
-      <div class="chip">Crew: <b id="crew">0</b></div>
-      <div class="chip">Pallets: <b id="pallets">0/0</b></div>
-      <div class="chip">Boxes Done: <b id="done">0</b></div>
-      <div class="chip">Stress: <b id="stress">0%</b></div>
-      <div class="chip" id="pizzaChip" style="display:none;">🍕 Speed +<b id="pizzaPct">0%</b> (<b id="pizzaTime">0</b>m)</div>
-    </div>
-    <div id="buttons">
-      <button id="btnStart">New Game</button>
-      <button id="btnAssign" class="secondary">Assign All → Pallets</button>
-      <button id="btnHelp" class="secondary">How to Play</button>
-      <button id="btnPause" class="secondary">Pause</button>
-      <button id="btnSfx" class="secondary">SFX: On</button>
-      <button id="btnForce" class="secondary">Force Start (Diag)</button>
-      <button id="btnRest" class="secondary">Rest Selected</button>
-    </div>
-    <div>
-      <div class="row"><label>Trash Cans</label><span id="trashPill" class="pill ok">0 / 2 full</span></div>
-      <div class="row"><label>Compacter</label><span id="compPill" class="pill ok">0 / 4</span></div>
-    </div>
-  </div>
+:root{color-scheme:dark;--ink:#edf5ed;--muted:#95afa9;--panel:#152b30;--mint:#8df5c2;--gold:#ffc779}*{box-sizing:border-box}body{margin:0;background:#091b20;color:var(--ink);font-family:system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:20px}header{display:flex;align-items:center;gap:15px;margin-bottom:18px}.lab{border:1px solid #365e60;color:var(--mint);padding:8px;font:bold 11px monospace;letter-spacing:2px}h1{font-size:clamp(22px,4vw,34px);line-height:1;margin:0;letter-spacing:2px}h1 span{color:var(--gold)}header p{margin:6px 0 0;color:var(--muted);font-size:12px;letter-spacing:3px}.tools{margin-left:auto;display:flex;gap:6px}button{font:700 15px system-ui;border:0;cursor:pointer;color:var(--ink);border-radius:10px;min-height:48px;background:#28484e;padding:10px 16px}button:focus-visible{outline:3px solid white;outline-offset:3px}button:disabled{opacity:.5;cursor:default}.tools button{padding:10px;font-size:12px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.stat{background:var(--panel);border:1px solid #28494c;border-radius:10px;padding:10px 14px}.stat small{display:block;font-size:10px;color:var(--muted);letter-spacing:2px}.stat b{display:block;font-size:22px;margin-top:2px}.board{position:relative;background:#253e40;border:1px solid #38615d;border-radius:16px;overflow:hidden}canvas{display:block;width:100%;height:auto;aspect-ratio:900/630;touch-action:none}.modal{position:absolute;inset:0;background:#081a20e8;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center}.modal[hidden]{display:none}.sheet{max-width:430px}.eyebrow{color:var(--mint);font:700 12px monospace;letter-spacing:3px}.sheet h2{font-size:clamp(30px,6vw,48px);line-height:1.05;margin:14px 0}.sheet p{color:#b8cdc4;line-height:1.6;font-size:15px}.sheet .primary{background:var(--mint);color:#0b2925;padding:14px 30px;font-size:18px}.rules{display:flex;justify-content:center;gap:14px;font-size:12px;color:var(--gold);margin:18px 0}.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}.controls button{min-height:76px;border-bottom:5px solid #0004;transition:transform .1s}.controls button:active{transform:translateY(3px)}.controls small{display:block;font-size:11px;font-weight:500;opacity:.85;margin-top:4px}#home{background:#246e68}#decor{background:#88603b}#cloth{background:#66588d}.radio{min-height:42px;text-align:center;padding:12px;color:var(--gold);font-weight:600;font-size:14px}.note{text-align:center;color:var(--muted);font-size:12px;margin:0}.progress{height:5px;background:#203c3f;border-radius:6px;overflow:hidden;margin-bottom:12px}.progress div{height:100%;background:var(--mint);width:0;transition:width .2s}@media(max-width:600px){main{padding:12px}header{gap:8px;flex-wrap:wrap;margin-bottom:12px}header p{font-size:10px;letter-spacing:2px}.lab{font-size:9px;padding:6px}.tools button{min-height:38px;padding:6px 8px}.stat{padding:8px}.stat b{font-size:20px}.stat small{font-size:9px;letter-spacing:1px}canvas{aspect-ratio:900/850;object-fit:contain}.controls{gap:6px}.controls button{padding:8px;font-size:14px;min-height:72px}.sheet p{font-size:13px}.sheet h2{font-size:30px}.rules{margin:10px 0}.radio{font-size:12px}}
 
-  <div id="gamepanel">
-    <div id="leftpanel">
-      <div class="row"><label>Home Goods Bins</label><div class="bar"><div id="binBar" class="fill" style="width:0%"></div></div></div>
-      <div class="row"><label>Decor Shelves</label><div class="bar"><div id="shelfBar" class="fill" style="width:0%"></div></div></div>
-      <div class="row"><label>Clothing Racks</label><div class="bar"><div id="rackBar" class="fill" style="width:0%"></div></div></div>
-      <div id="log"></div>
-    </div>
-    <div id="canvaswrap"><canvas id="game"></canvas></div>
-  </div>
+.key-overlay{position:fixed;inset:0;background:#05151beF;z-index:10;overflow:auto;padding:20px}.key-overlay[hidden]{display:none}.key-sheet{max-width:760px;margin:0 auto;background:#152b30;padding:20px;border:1px solid #476963;border-radius:16px}.key-top{display:flex;align-items:center;justify-content:space-between;gap:12px}.key-top h2{margin:0;font-size:26px}.key-sheet p{color:var(--muted);font-size:14px}.key-group h3{font-size:16px;letter-spacing:2px;margin:22px 0 10px}.key-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.item-card{background:#294347;border-radius:10px;padding:8px;text-align:center}.item-card canvas{aspect-ratio:1;height:auto;width:100%;touch-action:auto}.item-card span{display:block;font-size:12px;color:#eaf1dd;min-height:32px}.key-sheet .primary{background:var(--mint);color:#0b2925;display:block;margin:20px auto 0}@media(max-width:600px){.key-overlay{padding:12px}.key-sheet{padding:14px}.key-grid{grid-template-columns:repeat(3,1fr)}.key-top h2{font-size:22px}}
 
-  <div id="footer">Backroom Unload — v16.1</div>
-  <div id="overlay" class="overlay"><div class="panel"><h3 id="overlayTitle">Shift</h3><p id="overlayMsg">Message</p></div></div>
-  <div id="tooltip"></div>
-</div>
-
-<script>
+body{background:radial-gradient(ellipse at 20% 0%,#214252 0,transparent 50%),radial-gradient(ellipse at 90% 90%,#32273c 0,transparent 50%),#09171e}main{max-width:1020px}header{padding:10px 0 14px}.lab{box-shadow:0 0 18px #8df5c220;background:#122e32}h1{font-weight:950;letter-spacing:1px;text-shadow:0 3px 0 #0006}h1 span{color:#ffd18b;text-shadow:0 0 26px #ffc77930}header p{color:#91d9cd}.stat{background:linear-gradient(135deg,#21383f,#142930);border-color:#3c5d60;box-shadow:0 5px 12px #0002}.stat b{color:#ffe2a5}.stat:nth-child(2) b{color:#92f5cf}.board{border:2px solid #5e8885;box-shadow:0 20px 50px #0005,0 0 35px #82e6c215}.controls button{box-shadow:inset 0 1px 0 #fff4,0 5px 12px #0004;text-shadow:0 2px 0 #0003;letter-spacing:1px}#home{background:linear-gradient(135deg,#318d83,#1e5959)}#decor{background:linear-gradient(135deg,#b98548,#715333)}#cloth{background:linear-gradient(135deg,#8b73ba,#4b447a)}.modal{background:radial-gradient(ellipse,#122d36ee,#08151bf5)}.sheet h2{color:#ffe1a2;text-shadow:0 4px 0 #0004}.sheet .primary{box-shadow:0 5px 0 #4b997b,0 0 25px #8df5c225}.radio{color:#b8eedb}.key-sheet{background:linear-gradient(150deg,#223d45,#14262e)}
+</style></head><body><main>
+<header><div class="lab">LAB<br>137</div><div><h1>BACKROOM <span>BLITZZ</span></h1><p>BELT PANIC / AFTER HOURS V5</p></div><div class="tools"><button id="key" aria-haspopup="dialog">Item key</button><button id="pause" disabled>Pause</button><button id="sound" aria-pressed="false">Sound off</button></div></header>
+<div class="stats"><div class="stat"><small>SCORE</small><b id="score">0</b></div><div class="stat"><small>COMBO</small><b id="combo">0×</b></div><div class="stat"><small id="shiftLabel">SHIFT 1 · PALLETS</small><b id="pallets">0 / 11</b></div><div class="stat"><small>CHANCES</small><b id="lives">♥ 5 / 5</b></div></div><div class="progress"><div id="progress"></div></div>
+<div class="board"><canvas id="game" width="900" height="630" aria-label="Freight conveyor. Sort the front item using the three department buttons."></canvas><div class="modal" id="modal"><div class="sheet"><div class="eyebrow" id="eyebrow">ONE BELT. ONE TRUCK. YOU.</div><h2 id="title">Freight happens.</h2><p id="description">Sort the front item before it drops off the belt. Recognize the merchandise and choose its department. Pillows, towels and cookware → Home. Lamps, vases and ornaments → Decor. Garments → Clothing. Colors won’t give you the answer.</p><div class="rules" id="rules"><span>11 pallets / shift</span><span>5 chances</span><span>Endless shifts</span></div><button class="primary" id="start">Let's unload</button></div></div></div>
+<div class="controls"><button id="home" data-kind="home">⌂ HOME<small>← or swipe left</small></button><button id="decor" data-kind="decor">✦ DECOR<small>↑ or swipe up</small></button><button id="cloth" data-kind="cloth">♧ CLOTHING<small>→ or swipe right</small></button></div><div class="radio" id="radio" role="status" aria-live="polite">Your truck is waiting. Ready when you are.</div><p class="note">Tap a department to throw the front item. Clear a truck to unlock a harder shift. Pizza slows the belt.</p>
+</main><div id="itemKey" class="key-overlay" role="dialog" aria-modal="true" aria-labelledby="keyTitle" hidden><div class="key-sheet"><div class="key-top"><h2 id="keyTitle">Meet the merchandise</h2><button id="closeKey">Close key</button></div><p>Learn the shapes below. Each item can appear in different colors and patterns. The belt pauses while you look.</p><div id="keyItems"></div><button id="keyDone" class="primary">Got it!</button></div></div><script>
 'use strict';
-
-/* ========= Overlay ========= */
-function showOverlay(title, msg, autoMs, after){
-  const ov=document.getElementById('overlay'), t=document.getElementById('overlayTitle'), m=document.getElementById('overlayMsg');
-  if(!ov||!t||!m) return; t.textContent=title||'Notice'; m.textContent=msg||''; ov.style.display='flex';
-  if(autoMs&&autoMs>0){ setTimeout(()=>{ ov.style.display='none'; if(after) after(); }, autoMs); }
+const canvas=document.getElementById('game');let ctx=canvas.getContext('2d');
+const KINDS=['home','decor','cloth'],PALETTES={home:'#83dfbd',decor:'#f6c078',cloth:'#c3a4ed'},LABELS={home:'HOME',decor:'DECOR',cloth:'CLOTHING'},ICONS={home:'⌂',decor:'✦',cloth:'♧'};
+// Every department draws from the same colors: shape identifies the merchandise.
+const ITEM_COLORS=['#df8f89','#90b8d9','#b49bce','#d9b66f','#82b8a1','#ddd6bd','#788b9c','#c782aa'];
+const MERCH={home:['pillow','towels','pan','mug','basket'],decor:['lamp','vase','frame','clock','plant'],cloth:['pants','shirt','dress','jacket','socks']};
+const ITEM_NAMES={pillow:'throw pillow',towels:'towel stack',pan:'frying pan',mug:'coffee mug',basket:'laundry basket',lamp:'table lamp',vase:'vase',frame:'picture frame',clock:'wall clock',plant:'potted plant',pants:'pants',shirt:'T-shirt',dress:'dress',jacket:'jacket',socks:'socks'};
+const TOTAL=88,LIMIT=5;let mode='ready',boxes=[],flights=[],particles=[],spawned=0,resolved=0,score=0,combo=0,bestCombo=0,lives=LIMIT,elapsed=0,spawnClock=0,slow=0,flash=0,last=0,sound=false,audioCtx=null,record=0,level=1,lastWon=false,popups=[],stationGlow={home:0,decor:0,cloth:0};
+try{record=Number(localStorage.getItem('lab137-belt-panic-record'))||0;}catch{}
+const $=id=>document.getElementById(id);
+function radio(text){$('radio').textContent=text;}
+function beep(good){if(!sound)return;try{audioCtx??=new(window.AudioContext||window.webkitAudioContext)();audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='triangle';o.frequency.value=good?600+Math.min(combo,20)*18:140;g.gain.setValueAtTime(.06,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.12);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+.13);}catch{}}
+function hud(){ $('shiftLabel').textContent='SHIFT '+level+' · PALLETS';$('score').textContent=score.toLocaleString();$('combo').textContent=combo+'×';$('pallets').textContent=Math.min(11,Math.floor(resolved/8))+' / 11';$('lives').textContent='♥ '+lives+' / '+LIMIT;$('progress').style.width=100*resolved/TOTAL+'%';document.querySelectorAll('[data-kind]').forEach(b=>b.disabled=mode!=='playing');$('pause').disabled=!['playing','paused'].includes(mode);$('pause').textContent=mode==='paused'?'Resume':'Pause';}
+function reset(advance=false){const carriedScore=advance?score:0,carriedBest=advance?bestCombo:0;level=advance?level+1:1;lastWon=false;popups=[];stationGlow={home:0,decor:0,cloth:0};boxes=[];flights=[];particles=[];spawned=resolved=score=combo=bestCombo=elapsed=spawnClock=slow=flash=0;score=carriedScore;bestCombo=carriedBest;lives=LIMIT;mode='playing';$('modal').hidden=true;spawn();hud();radio(level===1?'Shift 1: warm up and sort the merchandise.':`Shift ${level}: faster belt, quicker deliveries. Five fresh chances!`);}
+function spawn(){if(spawned>=TOTAL)return;const kind=KINDS[Math.floor(Math.random()*3)];const item=MERCH[kind][Math.floor(Math.random()*MERCH[kind].length)],color=ITEM_COLORS[Math.floor(Math.random()*ITEM_COLORS.length)],pattern=Math.floor(Math.random()*3);boxes.push({id:spawned,kind,item,color,pattern,y:62,pizza:spawned>0&&spawned%18===0});spawned++;}
+function front(){return boxes.reduce((a,b)=>!a||b.y>a.y?b:a,null);}
+function burst(x,y,color){for(let i=0;i<12;i++)particles.push({x,y,vx:(Math.random()-.5)*180,vy:(Math.random()-.5)*180,t:.5,color});}
+function finish(won){lastWon=won;mode='ended';record=Math.max(record,score);try{localStorage.setItem('lab137-belt-panic-record',String(record));}catch{}$('modal').hidden=false;$('eyebrow').textContent=won?'SHIFT '+level+' COMPLETE!':'SHIFT '+level+' / BELT STOPPED';$('title').textContent=won?'Ready for the next truck?':'Another truck tomorrow.';$('description').textContent=`${score.toLocaleString()} total points · best combo ${bestCombo}. ${won?'Shift '+(level+1)+' brings a faster belt and closer-spaced freight. Your score carries forward; chances refill to five.':'Reached shift '+level+'. Start a new run to try again.'} Personal best: ${record.toLocaleString()}.`;$('rules').hidden=true;$('start').textContent=won?'Start shift '+(level+1):'New run';radio(won?'Truck clear! Next shift unlocked.':'Corporate suggests working faster. Corporate is not helping.');hud();}
+function resolve(box,good){boxes=boxes.filter(b=>b!==box);resolved++;if(good){stationGlow[box.kind]=1;popups.push({x:450,y:box.y,t:1,text:'+'+(100+Math.min(combo,20)*20),color:'#a7ffdb'});combo++;bestCombo=Math.max(bestCombo,combo);score+=100+Math.min(combo-1,20)*20;const dest=box.kind==='home'?{x:150,y:420}:box.kind==='decor'?{x:450,y:180}:{x:750,y:420};flights.push({...box,x:450,fromY:box.y,t:0,dest});burst(450,box.y,PALETTES[box.kind]);if(box.pizza){slow=6;radio('🍕 Pizza break! Six seconds of slow-motion sorting.');}else if(resolved%8===0)radio(`Pallet ${resolved/8} cleared. ${resolved===TOTAL?'Done!':'Here comes the next one!'}`);else if(combo%10===0)radio(`${combo} in a row! The backroom is yours.`);else radio(combo>1?`Nice throw. ${combo} in a row!`:'Good sort!');}else{popups.push({x:450,y:box.y,t:1,text:'OOPS!',color:'#ffb39c'});combo=0;lives--;flash=.25;burst(450,box.y,'#f18c7c');radio(lives===1?`Last chance! ${ITEM_NAMES[box.item]} → ${LABELS[box.kind]}.`:`${ITEM_NAMES[box.item]} goes to ${LABELS[box.kind]}. Keep going!`);}beep(good);if(lives<=0)finish(false);else if(resolved>=TOTAL)finish(true);hud();}
+function sort(kind){if(keyOpen||mode!=='playing')return;const box=front();if(!box){radio('Next box coming…');return;}resolve(box,box.kind===kind);}
+function pause(){if(keyOpen)return;if(mode==='playing'){mode='paused';$('modal').hidden=false;$('eyebrow').textContent='TAKE A BREATH';$('title').textContent='Belt on hold.';$('description').textContent='Your freight can wait. Resume when you’re ready.';$('rules').hidden=true;$('start').textContent='Back to the belt';}else if(mode==='paused'){mode='playing';$('modal').hidden=true;}hud();}
+function update(dt){if(keyOpen||mode!=='playing')return;elapsed+=dt;popups.forEach(p=>{p.t-=dt;p.y-=dt*38;});popups=popups.filter(p=>p.t>0);KINDS.forEach(k=>stationGlow[k]=Math.max(0,stationGlow[k]-dt*2));spawnClock+=dt;slow=Math.max(0,slow-dt);flash=Math.max(0,flash-dt);const difficulty=1+Math.min(level-1,11)*.18,deliveryFactor=1+Math.min(level-1,11)*.12;const speed=(48+Math.min(52,elapsed*.6))*difficulty*(slow>0?.45:1),interval=Math.max(.5,Math.max(.95,1.75-elapsed*.008)/deliveryFactor)/(slow>0?.6:1);if(spawnClock>=interval&&spawned<TOTAL){spawnClock=0;spawn();}boxes.forEach(b=>b.y+=speed*dt);for(const b of [...boxes])if(b.y>530&&mode==='playing')resolve(b,false);flights.forEach(f=>f.t+=dt*2.8);flights=flights.filter(f=>f.t<1);particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.t-=dt;});particles=particles.filter(p=>p.t>0);}
+function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}function text(s,x,y,size=18,color='#d8e9dc',align='left'){ctx.fillStyle=color;ctx.font=`bold ${size}px system-ui`;ctx.textAlign=align;ctx.fillText(s,x,y);}
+function poly(points,color){ctx.fillStyle=color;ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fill();}
+function oval(x,y,rx,ry,color){ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fill();}
+function merchandise(x,y,box,scale=1){
+ ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+ const c=box.color,dark='#263c46',light='#f2e7cf',item=box.item;
+ oval(0,33,40,8,'#132c3080');
+ switch(item){
+ case 'pillow':
+   poly([[-36,-27],[-26,-31],[27,-31],[36,-26],[31,0],[36,27],[23,31],[-26,29],[-36,24],[-31,0]],c);
+   ctx.strokeStyle=light;ctx.lineWidth=2;ctx.strokeRect(-26,-22,52,44);
+   if(box.pattern===0){for(let i=-18;i<22;i+=12)rect(i,-21,4,42,light);}else if(box.pattern===1){for(let yy=-12;yy<20;yy+=14)for(let xx=-16;xx<22;xx+=16)oval(xx,yy,2,2,light);}else poly([[0,-12],[12,0],[0,12],[-12,0]],light);
+   break;
+ case 'towels':
+   for(let i=0;i<3;i++){rect(-34+i*2,15-i*18,66,17,i===1?light:c);rect(-29+i*2,26-i*18,56,3,dark);}rect(-31,-26,63,5,light);break;
+ case 'pan':
+   rect(19,-5,34,10,c);oval(-10,0,29,29,c);oval(-10,0,23,23,dark);oval(-15,-7,14,9,'#48606a');rect(44,-2,5,4,dark);break;
+ case 'mug':
+   oval(25,2,18,22,c);oval(26,2,10,14,dark);rect(-30,-23,52,53,c);oval(-4,-23,26,7,light);oval(-4,-23,20,4,dark);rect(-25,24,43,5,light);if(box.pattern===1)text('★',-4,12,23,light,'center');else rect(-25,-2,42,6,light);break;
+ case 'basket':
+   poly([[-40,-23],[40,-23],[31,30],[-31,30]],c);rect(-41,-26,82,8,light);for(let yy=-11;yy<24;yy+=13)for(let xx=-25;xx<27;xx+=14)rect(xx,yy,8,6,dark);ctx.strokeStyle=c;ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,-23,26,Math.PI,0);ctx.stroke();break;
+ case 'lamp':
+   rect(-4,-3,8,37,light);oval(0,30,27,6,c);poly([[-23,-35],[23,-35],[38,-1],[-38,-1]],c);rect(-35,-1,70,5,light);rect(-20,-32,4,28,light);rect(24,5,2,13,light);break;
+ case 'vase':
+   poly([[-13,-35],[13,-35],[10,-15],[27,7],[28,22],[19,32],[-19,32],[-28,22],[-27,7],[-10,-15]],c);oval(0,-35,14,4,light);oval(0,-35,9,2,dark);if(box.pattern===0)rect(-24,10,48,6,light);else{oval(-12,9,3,3,light);oval(10,19,3,3,light);}break;
+ case 'frame':
+   rect(-33,-37,66,74,c);rect(-25,-29,50,58,light);rect(-19,-23,38,46,'#7899a8');oval(9,-13,7,7,'#f0d18d');poly([[-19,20],[-7,-1],[7,20]],'#518877');poly([[-3,20],[13,4],[19,20]],'#304f58');break;
+ case 'clock':
+   oval(0,0,36,36,c);oval(0,0,29,29,light);for(let i=0;i<12;i++){const a=i*Math.PI/6;rect(Math.sin(a)*23-2,-Math.cos(a)*23-2,4,4,dark);}rect(-2,-19,4,21,dark);poly([[0,-2],[20,7],[18,11],[-2,2]],dark);oval(0,0,4,4,c);break;
+ case 'plant':
+   rect(-3,-26,6,37,'#5e8a67');poly([[0,-12],[-27,-30],[-24,-42],[-5,-35]],'#81ab73');poly([[0,-18],[21,-40],[33,-35],[24,-20]],'#6c9969');poly([[0,2],[-30,-10],[-32,-24],[-11,-21]],'#64926b');poly([[0,-1],[25,-20],[34,-15],[27,0]],'#8ab37b');poly([[-27,7],[27,7],[19,34],[-19,34]],c);rect(-30,5,60,7,light);break;
+ case 'pants':
+   poly([[-27,-35],[27,-35],[30,33],[7,33],[0,-6],[-7,33],[-30,33]],c);rect(-26,-34,52,6,dark);rect(-1,-25,2,17,light);rect(-25,27,17,5,light);rect(8,27,17,5,light);rect(-19,-21,9,2,light);rect(10,-21,9,2,light);break;
+ case 'shirt':
+   poly([[-15,-32],[-35,-20],[-46,1],[-28,11],[-20,0],[-20,32],[20,32],[20,0],[28,11],[46,1],[35,-20],[15,-32],[7,-22],[-7,-22]],c);ctx.strokeStyle=light;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-32,12,0,Math.PI);ctx.stroke();if(box.pattern===0)rect(-19,0,38,7,light);else if(box.pattern===1)text('★',0,13,21,light,'center');break;
+ case 'dress':
+   poly([[-17,-35],[-30,-23],[-35,-5],[-23,1],[-15,-9],[-12,0],[-36,33],[36,33],[12,0],[15,-9],[23,1],[35,-5],[30,-23],[17,-35],[8,-26],[-8,-26]],c);rect(-14,-1,28,5,light);if(box.pattern===1){for(let xx=-20;xx<25;xx+=12)oval(xx,23,3,3,light);}else rect(-29,26,58,4,light);break;
+ case 'jacket':
+   poly([[-15,-32],[-29,-24],[-40,27],[-26,30],[-20,0],[-20,34],[20,34],[20,0],[26,30],[40,27],[29,-24],[15,-32],[0,-23]],c);rect(-2,-22,4,55,light);poly([[-15,-32],[0,-23],[-8,-8]],light);poly([[15,-32],[0,-23],[8,-8]],light);rect(-17,12,11,3,dark);rect(6,12,11,3,dark);break;
+ case 'socks':
+   for(let i=0;i<2;i++){const x=-32+i*37;poly([[x,-32],[x+22,-32],[x+22,13],[x+30,21],[x+28,31],[x+2,31],[x-6,21],[x,10]],c);rect(x,-30,22,7,light);rect(x+2,-14,18,4,light);}break;
+ }
+ if(box.pizza){rect(18,-42,30,25,'#243b42');text('🍕',33,-23,19,light,'center');}
+ ctx.restore();
 }
-
-/* ========= SFX ========= */
-let SFX_ENABLED=true; let _audioCtx=null;
-function sfxInit(){ try{ if(!_audioCtx) _audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
-function sfx(name){ if(!SFX_ENABLED) return; if(!_audioCtx) sfxInit(); if(!_audioCtx) return;
-  const ctx=_audioCtx, o=ctx.createOscillator(), g=ctx.createGain(); let f=440,d=.08,type='sine';
-  switch(name){
-    case'box':f=740;d=.05;type='square';break;
-    case'trash':f=220;d=.12;type='sawtooth';break;
-    case'compact':f=120;d=.25;type='triangle';break;
-    case'callaway':f=550;d=.15;type='sine';break;
-    case'pizza':f=660;d=.18;type='square';break;
-    case'palletDone':f=520;d=.12;type='triangle';break;
-    case'corpCut':f=160;d=.45;type='sawtooth';break;
-    case'select':f=880;d=.1;type='sine';break;
-    default:break;
-  }
-  o.type=type; o.frequency.value=f; g.gain.value=0.0001; o.connect(g); g.connect(ctx.destination);
-  const now=ctx.currentTime; o.start(now); g.gain.exponentialRampToValueAtTime(0.2, now+0.01); g.gain.exponentialRampToValueAtTime(0.0001, now+d); o.stop(now+d+0.01);
+function station(x,y,kind){
+ const glow=stationGlow[kind]||0;
+ ctx.save();if(glow){ctx.shadowColor=PALETTES[kind];ctx.shadowBlur=24*glow;}
+ rect(x-108,y-85,216,170,'#162d35');rect(x-102,y-79,204,154,'#426268');rect(x-96,y-70,192,136,'#29464d');
+ rect(x-102,y-79,204,8,PALETTES[kind]);ctx.shadowBlur=0;
+ rect(x-102,y+75,204,8,'#132a34');rect(x-95,y+83,12,15,'#1a3038');rect(x+83,y+83,12,15,'#1a3038');
+ rect(x-93,y-61,186,24,'#1a303a');text(LABELS[kind],x,y-43,17,PALETTES[kind],'center');
+ for(const xx of [-96,96])for(const yy of [-73,69]){oval(x+xx,y+yy,2,2,'#b1c6c0');}
+ if(kind==='cloth'){rect(x-72,y-20,144,5,'#b9cfca');rect(x-76,y-24,4,81,'#8ca8a6');rect(x+72,y-24,4,81,'#8ca8a6');for(let i=0;i<5;i++){const xx=x-62+i*27;ctx.strokeStyle='#ccdbcd';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(xx+7,y-15);ctx.lineTo(xx-4,y-4);ctx.lineTo(xx+18,y-4);ctx.closePath();ctx.stroke();poly([[xx,y-3],[xx-8,y+6],[xx-4,y+14],[xx,y+11],[xx,y+51],[xx+14,y+51],[xx+14,y+11],[xx+18,y+14],[xx+22,y+6],[xx+14,y-3]],['#ac96d0','#6ca3b5','#ddb785','#88bca4','#d78c95'][i]);}}
+ else{for(let i=0;i<3;i++){const yy=y-10+i*26;rect(x-83,yy+15,166,6,'#ad936e');rect(x-83,yy+21,166,3,'#6e5945');for(let j=0;j<5;j++){const xx=x-72+j*32;const col=['#d9aa85','#98c4b2','#b9a6cf','#e2c282','#86abb8'][j];if(kind==='home'){rect(xx-8,yy-4,22,18,col);rect(xx-6,yy,18,2,'#eee1c4');}else{oval(xx,yy+4,9,12,col);rect(xx-4,yy-9,8,5,col);}}}}
+ if(glow)text('NICE!',x,y-98,16,'#e8ffcb','center');ctx.restore();
 }
-
-/* ========= Error surfacing ========= */
-window.onerror=function(msg,src,line,col,err){
-  try{ const text=(msg||'Error')+' @ '+(line||'?')+':'+(col||'?'); const t=document.getElementById('ticker');
-    if(t) t.textContent='⚠️ '+text; showOverlay('Script Error', String(text), 2400);
-  }catch(e){}
-};
-
-/* ========= UTIL ========= */
-function reportError(where, err){
-  const m=(err&&err.message)?err.message:String(err); const line=where+': '+m;
-  console.error(line,err); const t=document.getElementById('ticker');
-  if(t) t.textContent='⚠️ '+line;
-}
-const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
-const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
-function fmtTime(minutes){
-  const total=8*60+minutes; let h=Math.floor(total/60), m=total%60;
-  const ampm=h>=12?'PM':'AM'; if(h>12) h-=12;
-  return `${h}:${m.toString().padStart(2,'0')} ${ampm}`;
-}
-
-/* ========= CONSTANTS ========= */
-const INGAME_MINUTE_MS=600;
-const WORLD={w:1600,h:900};
-const DOORS={
-  pallet:{x:WORLD.w-120,y:120,w:100,h:60,label:'Pallet Door'},
-  crew:{x:220,y:WORLD.h-110,w:110,h:70,label:'Crew Door'},
-  comp:{x:WORLD.w-160,y:WORLD.h-120,w:120,h:70,label:'Compacter'}
-};
-const COLORS={
-  bg:'#1a2036', pallet:'#8b5e3c', worker:'#4aa3ff', workerSel:'#7ec8ff',
-  trash:'#c34848', door:'#f2994a', bin:'#4ad07b', shelf:'#e2c84f',
-  rack:'#a86ee8', comp:'#222', text:'#e8ecff', outline:'rgba(255,255,255,.18)',
-  activePalletGlow:'rgba(125,220,131,0.4)'
-};
-const VARIANTS=[
-  {name:'Balanced Day',weights:{home:1,decor:1,cloth:1}},
-  {name:'Decor Day',weights:{home:.6,decor:2.2,cloth:.8}},
-  {name:'Clothing Day',weights:{home:.7,decor:.8,cloth:2}},
-  {name:'Home Goods Day',weights:{home:2,decor:.8,cloth:.8}}
-];
-function pickWeighted(w){
-  const e=Object.entries(w); const s=e.reduce((a,[,x])=>a+x,0);
-  let r=Math.random()*s; for(const [k,x] of e){ if((r-=x)<=0) return k; }
-  return e[0][0];
-}
-
-/* ========= ENTITIES ========= */
-const NAME_ORDER=["Alex","Riley-L","Danny","Dale","Carrissa","April","Rando-1","Rando-2"];
-let bannedNames=new Set();
-function makeWorker(i){
-  const baseSpeed=3.8*1.2*2*2*2*2*1.25*2;
-  const baseSprint=6.0*1.2*2*2*2*2*1.25*2;
-  const name=NAME_ORDER[i]||`W${i+1}`;
-  const isFav=(name==='Alex'||name==='Danny');
-  const speed=baseSpeed*(isFav?1.05:1), sprint=baseSprint*(isFav?1.05:1);
-  return {
-    id:i, x:DOORS.crew.x+40+(i%3)*32, y:DOORS.crew.y-40-(Math.floor(i/3)*32),
-    r:Math.round(14*1.25), speed, sprint, selected:false, task:null, busy:false,
-    visible:false, status:'off', nextStatusChange:0, name, callaways:0, fatigue:0,
-    pulse:0 // For selection animation
-  };
-}
-function newContainer(kind){
-  const cfg={home:{min:5,max:10},decor:{min:10,max:15},cloth:{min:15,max:20}}[kind];
-  const cap=rand(cfg.min,cfg.max);
-  return {centered:true,kind,capacity:cap,fill:0,x:0,y:0,w:60,h:60,id:Math.random()};
-}
-function makePallet(x,y){
-  const n=rand(20,50); const types=Array.from({length:n},()=>pickWeighted(dayVariant.weights));
-  return {id:Math.random(),x,y,w:70,h:70,boxes:n,initialBoxes:n,types,active:true};
-}
-
-/* ========= STATE ========= */
-const state={
-  running:false, paused:false, level:1, minute:0,
-  crew:[], selectedWorker:null,
-  bins:[], shelves:[], racks:[],
-  trashCans:[
-    {centered:true,fill:0,cap:25,x:140,y:90,w:40,h:40,id:Math.random()},
-    {centered:true,fill:0,cap:25,x:200,y:90,w:40,h:40,id:Math.random()}
-  ],
-  compacter:{count:0,cap:4,x:DOORS.comp.x+DOORS.comp.w/2,y:DOORS.comp.y-20,w:70,h:40},
-  palletsActive:[], palletsQueue:0, palletsMaxOnFloor:3,
-  boxesDone:0, stress:0, log:[], sickCount:0,
-  pizza:{lastDay:-999,active:false,pct:0,startMinute:0,endMinute:0}
-};
-function log(msg){
-  state.log.unshift(`[${fmtTime(state.minute)}] ${msg}`);
-  state.log=state.log.slice(0,80);
-  document.getElementById('log').innerHTML=state.log.map(l=>`<div>${l}</div>`).join('');
-  const t=document.getElementById('ticker'); if(t) t.textContent=msg;
-}
-
-/* ========= LAYOUT & VARIANTS ========= */
-let dayVariant=VARIANTS[0];
-const EXCUSES=[
-  "Corporate has decided {NAME} is better utilized as a parking lot traffic cone.",
-  "{NAME} has been promoted to ‘Cart Wrangler Emeritus’.",
-  "Due to budget realignment, {NAME} is now working as a shelf.",
-  "{NAME} has been reassigned to test the comfort of breakroom chairs full‑time.",
-  "{NAME} is now our official Doorstop Technician.",
-  "{NAME} has been moved into our Shadowy Corporate Think Tank.",
-  "We are rotating {NAME} into a new department called ‘Somewhere Else’.",
-  "{NAME} has been transferred to an exciting role: Not Here.",
-  "Corporate eliminated this role to make room for more motivational posters.",
-  "{NAME} has gone to a better place… the better store across town."
-];
-let daysSinceCut=0; let removedRoster=new Set();
-function chooseVariant(){
-  dayVariant=VARIANTS[rand(0,VARIANTS.length-1)];
-  log(`Variant today: ${dayVariant.name}.`);
-}
-function layoutContainers(){
-  const col1x=150,col2x=300,gapY=90,startY=220;
-  state.shelves=[newContainer('decor'),newContainer('decor'),newContainer('decor')];
-  state.bins=[newContainer('home'),newContainer('home'),newContainer('home')];
-  state.racks=[newContainer('cloth'),newContainer('cloth'),newContainer('cloth')];
-  state.shelves.forEach((c,i)=>{c.x=col1x;c.y=startY+i*gapY;});
-  const b=startY+3*gapY+20;
-  state.bins.forEach((c,i)=>{c.x=col1x;c.y=b+i*gapY;});
-  const r=startY+gapY/2;
-  state.racks.forEach((c,i)=>{c.x=col2x;c.y=r+i*gapY;});
-}
-
-/* ========= CREW & TEMPS ========= */
-function scheduleCrew(){
-  state.crew=[];
-  const baseNames=NAME_ORDER.filter(n=>!bannedNames.has(n)&&!n.startsWith('Rando'));
-  const baseCount=Math.min(6,baseNames.length);
-  const count=Math.max(2,baseCount);
-  let sick=0;
-  for(let i=0;i<count;i++){
-    const w=makeWorker(i); w.name=baseNames[i]||w.name;
-    if(Math.random()<0.12){ w.status='sick'; w.visible=false; sick++; log(`${w.name} called out sick.`); }
-    else{
-      const r=Math.random(); let late=0;
-      if(r<0.7) late=rand(0,5); else if(r<0.95) late=rand(5,15); else late=rand(15,30);
-      w.arrival=late; if(late>0) log(`${w.name} is late (~${late} min).`);
-    }
-    w.mBreak=rand(120,180); w.mBreakDur=15; w.lunch=rand(240,300); w.lunchDur=45;
-    w.aBreak=rand(360,465); w.aBreakDur=15;
-    state.crew.push(w);
-  }
-  state.sickCount=sick;
-  ['Rando-1','Rando-2'].filter(n=>!bannedNames.has(n)).forEach((n,idx)=>{
-    if(Math.random()<0.6){
-      const t=makeWorker(count+idx); t.name=n; t.visible=false; t.status='off';
-      t.arrival=rand(60,150); t.leaveAt=t.arrival+rand(90,180);
-      t.mBreak=9999; t.lunch=9999; t.aBreak=9999;
-      state.crew.push(t); log(`${n} might pop in to help today.`);
-    }
-  });
-}
-function schedulePizza(){
-  const can=(state.level-state.pizza.lastDay)>=7;
-  if(!can){ state.pizza.active=false; return; }
-  if(Math.random()<0.3){
-    const pct=rand(5,15), start=rand(150,300);
-    state.pizza={lastDay:state.level,active:false,pct,startMinute:start,endMinute:start+120};
-    log(`Alex convinced Ernie to buy pizza today. (+${pct}% speed for 2h, starts ${fmtTime(start)})`);
-  } else state.pizza.active=false;
-}
-function setupDay(carryOver=false){
-  const leftover=carryOver?state.palletsActive.filter(p=>p.active&&p.boxes>0):[];
-  leftover.forEach(p=>{ if(!('initialBoxes' in p)) p.initialBoxes=p.boxes; });
-  state.minute=0; chooseVariant(); schedulePizza();
-  state.palletsQueue=rand(6,11);
-  if(Math.random()<0.15) state.palletsQueue+=rand(1,2); // Bonus pallets
-  state.palletsActive=leftover; state.boxesDone=0; state.stress=8; // Lower initial stress
-  state.compacter.count=0; state.trashCans.forEach(t=>t.fill=0);
-  layoutContainers(); scheduleCrew(); state.selectedWorker=null;
-  log(`Day ${state.level} starts. New pallets: ${state.palletsQueue}. Carryover pallets: ${leftover.length}.`);
-}
-
-/* ========= LOOP ========= */
-let canvasEl, ctx2, lastTick=0, acc=0;
-function startGame(){
-  removedRoster=new Set(); bannedNames=new Set(); daysSinceCut=0;
-  state.running=true; state.paused=false; state.level=1;
-  setupDay(false); updateHUD();
-  const t=document.getElementById('ticker'); if(t) t.textContent='New game started.';
-}
-function nextDay(){
-  state.level++; setupDay(true); updateHUD();
-}
-function updateHUD(){
-  document.getElementById('day').textContent=state.level;
-  document.getElementById('time').textContent=fmtTime(state.minute);
-  const crewActive=state.crew.filter(w=>w.status!=='sick').length;
-  document.getElementById('crew').textContent=`${crewActive - state.crew.filter(w=>!w.visible).length}/${crewActive}`;
-  document.getElementById('pallets').textContent=`${state.palletsActive.length}/${state.palletsQueue+state.palletsActive.length}`;
-  document.getElementById('done').textContent=state.boxesDone;
-  document.getElementById('stress').textContent=`${Math.round(state.stress)}%`;
-  const total=a=>a.reduce((x,b)=>x+b.capacity,0), fill=a=>a.reduce((x,b)=>x+b.fill,0);
-  document.getElementById('binBar').style.width=`${100*fill(state.bins)/Math.max(1,total(state.bins))}%`;
-  document.getElementById('shelfBar').style.width=`${100*fill(state.shelves)/Math.max(1,total(state.shelves))}%`;
-  document.getElementById('rackBar').style.width=`${100*fill(state.racks)/Math.max(1,total(state.racks))}%`;
-  const fullCans=state.trashCans.filter(t=>t.fill>=t.cap).length;
-  const tp=document.getElementById('trashPill');
-  tp.textContent=`${fullCans} / ${state.trashCans.length} full`;
-  tp.className='pill '+(fullCans===0?'ok':(fullCans<state.trashCans.length?'warn':'bad'));
-  const cp=document.getElementById('compPill');
-  cp.textContent=`${state.compacter.count} / ${state.compacter.cap}`;
-  cp.className='pill '+(state.compacter.count<state.compacter.cap?'ok':'bad');
-  const chip=document.getElementById('pizzaChip');
-  if(state.pizza&&state.pizza.active){
-    chip.style.display=''; document.getElementById('pizzaPct').textContent=`${state.pizza.pct}%`;
-    document.getElementById('pizzaTime').textContent=`${Math.max(0,state.pizza.endMinute-state.minute)}`;
-  } else chip.style.display='none';
-}
-function tick(dt){
-  if(!state.running||state.paused) return;
-  acc+=dt; while(acc>=INGAME_MINUTE_MS){
-    acc-=INGAME_MINUTE_MS; try{ simMinute(); }catch(e){ reportError('simMinute',e); }
-  }
-  try{ draw(); }catch(e){ reportError('draw',e); }
-  // Update pulse animation
-  state.crew.forEach(w=>{
-    if(w.selected||w.task) w.pulse=Math.min(w.pulse+0.05,1);
-    else w.pulse=Math.max(w.pulse-0.05,0);
-  });
-}
-function applySpeedBonus(s,w){
-  let factor=1;
-  if(state.pizza&&state.pizza.active) factor*=1+state.pizza.pct/100;
-  factor*=(1-Math.min(w.fatigue/100,0.3)); // Fatigue reduces speed up to 30%
-  return s*factor;
-}
-function startBreak(w,dur,label){
-  w.status='break'; w.task={kind:'exitDoor',tx:DOORS.crew.x+DOORS.crew.w/2,ty:DOORS.crew.y+DOORS.crew.h/2};
-  w.nextStatusChange=state.minute+dur; log(`${w.name} on ${label.toLowerCase()} (${dur} min).`);
-}
-function startAssist(w,dur,label){
-  w.status='assist'; w.task={kind:'exitDoor',tx:DOORS.crew.x+DOORS.crew.w/2,ty:DOORS.crew.y+DOORS.crew.h/2};
-  w.nextStatusChange=state.minute+dur; log(`${w.name} called to ${label.toLowerCase()} (${dur} min).`);
-}
-function startRest(w){
-  if(w.status!=='work'||!w.visible){ log(`${w.name} cannot rest now (${w.status}).`); return; }
-  w.status='rest'; w.task=null; w.nextStatusChange=state.minute+30; w.busy=true;
-  log(`${w.name} resting (30 min). Fatigue will decrease.`);
-}
-function maybeBackFromBreak(w){
-  if((w.status==='break'||w.status==='assist'||w.status==='rest')&&state.minute>=w.nextStatusChange){
-    w.visible=true; w.task={kind:'enterDoor',tx:DOORS.crew.x+DOORS.crew.w+40,ty:DOORS.crew.y-40};
-    w.status='work'; w.fatigue=Math.max(0,w.fatigue-30); // Reduce fatigue
-    log(`${w.name} returned${w.status==='rest'?'. Fatigue reduced.':'.'}`);
-    setTimeout(()=>{ if(!w.task) assignShuttle(w); },150);
-  }
-}
-function moveTowards(w,tx,ty,sprint=false){
-  const dx=tx-w.x, dy=ty-w.y; let dist=Math.hypot(dx,dy);
-  if(!isFinite(dist)||dist===0){ w.x=tx; w.y=ty; return true; }
-  const base=sprint?w.sprint:w.speed; let sp=applySpeedBonus(base,w);
-  if(!isFinite(sp)||sp<=0) sp=1;
-  if(dist>sp){ w.x+=(dx/dist)*sp; w.y+=(dy/dist)*sp; return false; }
-  w.x=tx; w.y=ty; return true;
-}
-function simMinute(){
-  state.minute++;
-  if(state.pizza && !state.pizza.active && state.minute===state.pizza.startMinute){
-    state.pizza.active=true; log(`🍕 Pizza arrived! +${state.pizza.pct}% speed for 2 hours.`); sfx('pizza');
-  }
-  if(state.pizza && state.pizza.active && state.minute>=state.pizza.endMinute){
-    state.pizza.active=false; log(`🍕 Pizza boost ended.`);
-  }
-  if(state.minute>=480){
-    const win=(state.palletsActive.length===0 && state.palletsQueue===0);
-    if(win){
-      daysSinceCut++; const cutToday=(daysSinceCut>=(Math.random()<0.5?2:3));
-      if(cutToday){
-        daysSinceCut=0; const victim=pickCorpCut();
-        if(victim){
-          const excuse=EXCUSES[Math.floor(Math.random()*EXCUSES.length)].replace('{NAME}',victim);
-          log('Corporate removed '+victim+'.'); sfx('corpCut');
-          showOverlay('Corporate Communication', excuse, 2200, ()=>{ nextDay(); state.running=true; });
-        } else {
-          log('Day complete! No staff changes today.');
-          showOverlay('Day Complete','No staff changes today. Starting next day…',1600,()=>{ nextDay(); state.running=true; });
-        }
-      } else {
-        log('Day complete! No staff changes today.');
-        showOverlay('Day Complete','No staff changes today. Starting next day…',1600,()=>{ nextDay(); state.running=true; });
-      }
-    } else {
-      log('Shift ended with work unfinished. Carrying work to tomorrow…');
-      showOverlay('Shift Ended','Unfinished pallets will carry over. Starting next day…',1600,()=>{ nextDay(); });
-    }
-    return;
-  }
-  // Fatigue accumulation
-  state.crew.forEach(w=>{
-    if(w.visible && w.status==='work' && w.task) w.fatigue=clamp(w.fatigue+0.2,0,100);
-  });
-  // Arrivals & temp departures
-  state.crew.forEach(w=>{
-    if(w.status==='sick') return;
-    if(!w.visible && state.minute>=w.arrival){
-      w.visible=true; w.status='work'; w.task={kind:'enterDoor',tx:DOORS.crew.x+DOORS.crew.w+40,ty:DOORS.crew.y-40};
-      log(`${w.name} clocked in.`);
-    }
-    if(w.name&&w.name.startsWith('Rando')&&w.visible&&w.leaveAt&&state.minute>=w.leaveAt){
-      w.status='assist'; w.task={kind:'exitDoor',tx:DOORS.crew.x+DOORS.crew.w/2,ty:DOORS.crew.y+DOORS.crew.h/2};
-      w.nextStatusChange=state.minute; log(`${w.name} headed out. Thanks!`); bannedNames.add(w.name);
-    }
-  });
-  // Breaks
-  state.crew.forEach(w=>{
-    if(!w.visible||w.status==='sick') return;
-    if(w.status==='work'&&state.minute===w.mBreak) startBreak(w,w.mBreakDur,'Break');
-    if(w.status==='work'&&state.minute===w.lunch) startBreak(w,w.lunchDur,'Lunch');
-    if(w.status==='work'&&state.minute===w.aBreak) startBreak(w,w.aBreakDur,'Break');
-  });
-  // Call-aways
-  state.crew.forEach(w=>{
-    if(!w.visible||w.status!=='work') return;
-    if(w.name==='Alex'||w.name==='Danny'||(w.name&&w.name.startsWith('Rando'))) return;
-    if(w.callaways>=3) return;
-    if(Math.random()<0.002){ startAssist(w,rand(10,30),'Assist at cash'); sfx('callaway'); w.callaways++; }
-    else if(Math.random()<0.0015){ startAssist(w,15,'Cover front-end'); sfx('callaway'); w.callaways++; }
-  });
-  state.crew.forEach(w=>{ if(w.visible && w.task) stepTask(w); });
-  const fullCans=state.trashCans.filter(t=>t.fill>=t.cap).length;
-  if(fullCans===1) state.stress+=0.2; // Reduced stress impact
-  if(fullCans>=2) state.stress+=0.6; // Reduced stress impact
-  if(state.compacter.count>=state.compacter.cap) state.stress+=0.6; // Reduced stress impact
-  const outstanding=state.palletsActive.reduce((a,p)=>a+p.boxes,0);
-  if(outstanding>80) state.stress+=0.2; // Reduced stress impact
-  if(outstanding>150) state.stress+=0.4; // Reduced stress impact
-  state.stress=clamp(state.stress-0.3,0,100); // Slightly faster stress decay
-  if(state.stress>=100){
-    log('Burnout! Stress maxed out.');
-    showOverlay('Burnout','Stress maxed out. Starting next day…',1600,()=>{ nextDay(); });
-  }
-  updateHUD();
-}
-function pickCorpCut(){
-  const order=['Rando-1','Rando-2','April','Carrissa','Dale','Riley-L','Danny','Alex'];
-  const names=state.crew.map(w=>w.name).filter((v,i,a)=>a.indexOf(v)===i);
-  for(const n of order){
-    if(names.includes(n)&&!removedRoster.has(n)){ removedRoster.add(n); bannedNames.add(n); return n; }
-  }
-  return null;
-}
-
-/* ========= TASKS ========= */
-function assignShuttle(w){
-  const p=state.palletsActive.find(pp=>pp.active&&pp.boxes>0);
-  if(p){
-    w.task={kind:'workPallet',pallet:p,tx:p.x+p.w/2,ty:p.y+p.h/2,stage:0};
-    w.busy=true; log(`${w.name} assigned to pallet.`);
-    return;
-  }
-  if(state.palletsQueue>0 && state.palletsActive.length<state.palletsMaxOnFloor){
-    const spot=nonOverlappingSpawn(); if(!spot){ log('No space to place another pallet.'); return; }
-    const np=makePallet(spot.x,spot.y); state.palletsActive.push(np); state.palletsQueue--;
-    w.task={kind:'bringPallet',tx:np.x+np.w/2,ty:np.y+np.h/2}; w.busy=true;
-    log(`${w.name} brought out a pallet.`);
-    return;
-  }
-}
-function stepTask(w){
-  const t=w.task; if(!t) return;
-  if(t.kind==='enterDoor'){ if(moveTowards(w,t.tx,t.ty,true)){ w.task=null; w.busy=false; } return; }
-  if(t.kind==='exitDoor'){ if(moveTowards(w,t.tx,t.ty,true)){ w.visible=false; w.task=null; w.busy=false; } return; }
-  if(t.kind==='bringPallet'){ if(moveTowards(w,t.tx,t.ty)){ assignShuttle(w); } return; }
-  if(t.kind==='workPallet'){ shuttleBox(w); return; }
-  if(t.kind==='emptyTrash'){
-    if(!t.stage) t.stage=0;
-    if(t.stage===0){
-      if(moveTowards(w,t.tx,t.ty)){
-        t.stage=1; t.tx=DOORS.comp.x+DOORS.comp.w/2; t.ty=DOORS.comp.y+DOORS.comp.h/2;
-        log(`${w.name} hauling trash to compacter.`);
-      }
-    } else if(t.stage===1){
-      if(moveTowards(w,t.tx,t.ty)){
-        state.compacter.count=clamp(state.compacter.count+1,0,state.compacter.cap);
-        t.can.fill=0; w.task=null; w.busy=false; log(`${w.name} emptied trash can.`); sfx('trash');
-      }
-    }
-    return;
-  }
-  if(t.kind==='compact'){
-    if(moveTowards(w,t.tx,t.ty)){
-      state.compacter.count=0; w.task=null; w.busy=false; log(`${w.name} compacted trash.`); sfx('compact');
-    }
-    return;
-  }
-  if(t.kind==='swapContainer'){
-    if(moveTowards(w,t.tx,t.ty)){
-      t.container.fill=0; w.task=null; w.busy=false; log(`${w.name} swapped a full ${t.container.kind} container.`);
-    }
-    return;
-  }
-}
-function shuttleBox(w){
-  try{
-    const t=w.task; if(!t){ w.busy=false; return; }
-    const p=t.pallet; if(!p||!p.active||p.boxes<=0){ w.task=null; w.busy=false; return; }
-    if(!Array.isArray(p.types)||p.types.length===0){
-      log('⚠️ Pallet data missing'); w.task=null; w.busy=false; return;
-    }
-    const type=p.types[Math.max(0,Math.min(p.boxes-1,p.types.length-1))];
-    const arr=(type==='home')?state.bins:(type==='decor')?state.shelves:state.racks;
-    if(!arr||arr.length===0){
-      log('⚠️ No containers available'); w.task=null; w.busy=false; return;
-    }
-    let target=arr.find(c=>c&&(c.fill<c.capacity));
-    if(!target){
-      w.task=null; w.busy=false; log(`All ${type} containers are full! Swap one.`); state.stress+=2; return;
-    }
-    if(!t.stage){
-      if(moveTowards(w,t.tx,t.ty)){
-        t.stage=1; t.tx=target.x; t.ty=target.y; t.targetContainer=target;
-      }
-    } else if(t.stage===1){
-      if(moveTowards(w,t.tx,t.ty)){
-        if(!t.targetContainer){ log('⚠️ Lost target container'); w.task=null; w.busy=false; return; }
-        if(t.targetContainer.fill>=t.targetContainer.capacity){
-          log(`Target ${t.targetContainer.kind} container became full. ${w.name} needs a swap.`);
-          w.task=null; w.busy=false; return;
-        }
-        p.boxes--; t.targetContainer.fill++; state.boxesDone++;
-        let least=state.trashCans.reduce((a,b)=>a.fill<=b.fill?a:b);
-        if(least) least.fill=clamp(least.fill+2,0,least.cap); sfx('box');
-        log(`${w.name} stocked 1 box to ${t.targetContainer.kind}.`);
-        if(p.boxes<=0){
-          p.active=false; state.palletsActive=state.palletsActive.filter(pp=>pp.active);
-          log(`Pallet finished.`); sfx('palletDone'); w.task=null; w.busy=false; assignShuttle(w);
-          return;
-        }
-        t.stage=0; t.tx=p.x+p.w/2; t.ty=p.y+p.h/2;
-      }
-    }
-  }catch(e){ reportError('shuttleBox',e); w.task=null; w.busy=false; }
-}
-
-/* ========= COORDS & DRAW ========= */
-function containsRect(r,x,y){
-  const rx=r.centered?(r.x-r.w/2):r.x, ry=r.centered?(r.y-r.h/2):r.y;
-  return (x>=rx&&x<=rx+r.w&&y>=ry&&y<=ry+r.h);
-}
-function rectsOverlap(a,b){
-  const ax=a.centered?(a.x-a.w/2):a.x, ay=a.centered?(a.y-a.h/2):a.y;
-  const bx=b.centered?(b.x-b.w/2):b.x, by=b.centered?(b.y-b.h/2):b.y;
-  return !(ax+a.w<=bx||bx+b.w<=ax||ay+a.h<=by||by+b.h<=ay);
-}
-function nonOverlappingSpawn(){
-  const spots=[];
-  for(let i=0;i<4;i++){ for(let j=0;j<3;j++){ spots.push({x:WORLD.w-350-i*90,y:140+j*110,w:70,h:70}); } }
-  for(const s of spots){ if(!state.palletsActive.some(p=>rectsOverlap(s,p))) return {x:s.x,y:s.y}; }
-  for(let k=0;k<20;k++){
-    const px=WORLD.w-260-rand(0,120), py=200+rand(-40,220), r={x:px,y:py,w:70,h:70};
-    if(!state.palletsActive.some(p=>rectsOverlap(r,p))) return {x:px,y:py};
-  }
-  return null;
-}
-function pickWorkerAt(x,y){
-  const w=state.crew.find(w=>w.visible&&Math.hypot(w.x-x,w.y-y)<=w.r);
-  if(!w) return;
-  if(w.status!=='work'){ log(`${w.name} is not available (${w.status}).`); return; }
-  state.crew.forEach(ww=>ww.selected=false); w.selected=true; state.selectedWorker=w;
-  sfx('select'); // Play selection sound
-}
-function commandSelectedToTargetAt(x,y){
-  const w=state.selectedWorker; if(!w||w.status!=='work') return;
-  if(x>=DOORS.pallet.x&&x<=DOORS.pallet.x+DOORS.pallet.w&&y>=DOORS.pallet.y&&y<=DOORS.pallet.y+DOORS.pallet.h){
-    if(state.palletsActive.length>=state.palletsMaxOnFloor){ log('Max pallets on floor (3).'); return; }
-    if(state.palletsQueue<=0){ log('No more pallets to bring.'); return; }
-    const spot=nonOverlappingSpawn(); if(!spot){ log('No space to place another pallet.'); return; }
-    const p=makePallet(spot.x,spot.y); state.palletsActive.push(p); state.palletsQueue--;
-    w.task={kind:'bringPallet',tx:p.x+p.w/2,ty:p.y+p.h/2}; w.busy=true;
-    log(`${w.name} brought out a pallet.`);
-    return;
-  }
-  if(x>=DOORS.comp.x&&x<=DOORS.comp.x+DOORS.comp.w&&y>=DOORS.comp.y&&y<=DOORS.comp.y+DOORS.comp.h){
-    if(state.compacter.count>=state.compacter.cap){
-      w.task={kind:'compact',tx:DOORS.comp.x+DOORS.comp.w/2,ty:DOORS.comp.y+DOORS.comp.h/2};
-      w.busy=true; log(`${w.name} heading to compact.`);
-    } else { log('Compacter not full enough to run (fills to 4).'); }
-    return;
-  }
-  const p=state.palletsActive.find(pp=>containsRect(pp,x,y));
-  if(p){
-    if(!p.active||p.boxes<=0){ log('That pallet is empty.'); return; }
-    w.task={kind:'workPallet',pallet:p,tx:p.x+p.w/2,ty:p.y+p.h/2,stage:0};
-    w.busy=true; log(`${w.name} assigned to pallet.`);
-    return;
-  }
-  const t=state.trashCans.find(t=>containsRect(t,x,y));
-  if(t){
-    if(t.fill>=t.cap){
-      w.task={kind:'emptyTrash',tx:t.x,ty:t.y,can:t,stage:0}; w.busy=true; log(`${w.name} emptying trash.`);
-    } else { log('Trash can not full yet.'); }
-    return;
-  }
-  const findC=a=>a.find(c=>containsRect(c,x,y));
-  const c=findC(state.bins)||findC(state.shelves)||findC(state.racks);
-  if(c){
-    if(c.fill>=c.capacity){
-      w.task={kind:'swapContainer',container:c,tx:c.x,ty:c.y}; w.busy=true;
-      log(`${w.name} swapping full ${c.kind} container.`);
-    } else { log('Container has space; no action needed.'); }
-    return;
-  }
-  log('No actionable target.');
-}
-let ctx;
-function drawDoor(d){
-  ctx.fillStyle=COLORS.door; ctx.fillRect(d.x,d.y,d.w,d.h);
-  ctx.strokeStyle=COLORS.outline; ctx.strokeRect(d.x,d.y,d.w,d.h);
-  ctx.fillStyle=COLORS.text; ctx.font='20px sans-serif'; ctx.fillText(d.label, d.x-10, d.y-8);
-}
-function drawPalletProgress(p){
-  const total=p.initialBoxes||p.boxes||1, done=total-p.boxes, pct=done/Math.max(1,total);
-  const bx=p.x, by=p.y-18, bw=p.w, bh=10;
-  ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(bx,by,bw,bh);
-  ctx.fillStyle='#7ddc83'; ctx.fillRect(bx,by,bw*pct,bh);
-  ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.strokeRect(bx,by,bw,bh);
-  ctx.fillStyle='#fff'; ctx.font='12px sans-serif'; ctx.fillText(`${done}/${total}`, bx+2, by-2);
-}
-function drawStatusBadge(w){
-  let ring='rgba(255,255,255,.35)', badgeText='', badgeColor='#2b2f45';
-  if(w.status==='break'){ring='#f6b73c'; badgeText='BREAK'; badgeColor='rgba(246,183,60,.9)';}
-  else if(w.status==='assist'){ring='#ee5a5a'; badgeText='AWAY'; badgeColor='rgba(238,90,90,.9)';}
-  else if(w.status==='work'){ ring='#7ddc83'; }
-  else if(w.status==='rest'){ ring='#4ad07b'; badgeText='REST'; badgeColor='rgba(74,208,123,.9)';}
-  ctx.beginPath(); ctx.strokeStyle=ring; ctx.lineWidth=4; ctx.arc(w.x,w.y,w.r+4,0,Math.PI*2); ctx.stroke();
-  if(badgeText){
-    ctx.fillStyle=badgeColor; const pad=4; ctx.font='bold 14px sans-serif';
-    const tw=ctx.measureText(badgeText).width; const bw=tw+pad*2, by=22;
-    const bx=w.x-bw/2, byPos=w.y-w.r-24; ctx.fillRect(bx,byPos,bw,by);
-    ctx.fillStyle='#111'; ctx.fillText(badgeText,bx+pad,byPos+16);
-  }
-}
+function worker(x,y){const wave=mode==='playing'&&!keyOpen?Math.sin(elapsed*5)*3:0;ctx.save();ctx.translate(x,y);rect(-28,39,58,12,'#213639');rect(-18,5,14,38,'#27374b');rect(4,5,14,38,'#27374b');rect(-25,-32,50,41,'#57a69d');rect(-36,-25+wave,10,34,'#dbaf8c');rect(26,-25-wave,10,34,'#dbaf8c');rect(-18,-68,36,36,'#dcb18f');rect(-10,-43,20,11,'#bfc2b1');rect(-10,-53,4,4,'#24333b');rect(7,-53,4,4,'#24333b');ctx.restore();}
 function draw(){
-  const cw=canvasEl.clientWidth, ch=canvasEl.clientHeight;
-  if(canvasEl.width!==cw||canvasEl.height!==ch){ canvasEl.width=cw; canvasEl.height=ch; }
-  ctx.clearRect(0,0,cw,ch); ctx.save();
-  const sx=cw/WORLD.w, sy=ch/WORLD.h, s=Math.min(sx,sy), ox=(cw-WORLD.w*s)/2, oy=(ch-WORLD.h*s)/2;
-  ctx.translate(ox,oy); ctx.scale(s,s);
-  ctx.fillStyle=COLORS.bg; ctx.fillRect(0,0,WORLD.w,WORLD.h);
-  ctx.strokeStyle=COLORS.outline; ctx.lineWidth=2; ctx.strokeRect(0,0,WORLD.w,WORLD.h);
-  drawDoor(DOORS.pallet); drawDoor(DOORS.crew);
-  ctx.fillStyle=COLORS.comp; ctx.fillRect(DOORS.comp.x,DOORS.comp.y,DOORS.comp.w,DOORS.comp.h);
-  ctx.strokeStyle=COLORS.outline; ctx.strokeRect(DOORS.comp.x,DOORS.comp.y,DOORS.comp.w,DOORS.comp.h);
-  ctx.fillStyle=COLORS.text; ctx.font='20px sans-serif'; ctx.fillText('Compacter', DOORS.comp.x-10, DOORS.comp.y-8);
-  function drawContainers(arr,color,tag){
-    arr.forEach(c=>{
-      ctx.fillStyle=color; ctx.fillRect(c.x-c.w/2,c.y-c.h/2,c.w,c.h);
-      ctx.strokeStyle=COLORS.outline; ctx.strokeRect(c.x-c.w/2,c.y-c.h/2,c.w,c.h);
-      const pct=c.fill/Math.max(1,c.capacity);
-      ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fillRect(c.x-c.w/2,c.y+c.h/2-10,c.w,10);
-      ctx.fillStyle='#8de0a2'; ctx.fillRect(c.x-c.w/2,c.y+c.h/2-10,c.w*pct,10);
-      ctx.fillStyle=COLORS.text; ctx.font='12px sans-serif'; ctx.fillText(tag,c.x-c.w/2+2,c.y-c.h/2-8);
-    });
-  }
-  drawContainers(state.bins, COLORS.bin, 'BINS (Home)');
-  drawContainers(state.shelves, COLORS.shelf, 'SHELVES (Decor)');
-  drawContainers(state.racks, COLORS.rack, 'RACKS (Clothing)');
-  state.trashCans.forEach(t=>{
-    ctx.fillStyle=COLORS.trash; ctx.fillRect(t.x-t.w/2,t.y-t.h/2,t.w,t.h);
-    ctx.strokeStyle=COLORS.outline; ctx.strokeRect(t.x-t.w/2,t.y-t.h/2,t.w,t.h);
-    const pct=t.fill/t.cap; ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fillRect(t.x-t.w/2,t.y+t.h/2-10,t.w,10);
-    ctx.fillStyle='#f6b73c'; ctx.fillRect(t.x-t.w/2,t.y+t.h/2-10,t.w*pct,10);
-    ctx.fillStyle=COLORS.text; ctx.font='12px sans-serif'; ctx.fillText('TRASH', t.x-18, t.y-t.h/2-8);
-  });
-  state.palletsActive.forEach(p=>{
-    ctx.fillStyle=COLORS.pallet; ctx.fillRect(p.x,p.y,p.w,p.h);
-    if(p.active&&p.boxes>0){
-      ctx.strokeStyle=COLORS.activePalletGlow; ctx.lineWidth=4; ctx.strokeRect(p.x-2,p.y-2,p.w+4,p.h+4);
-    }
-    ctx.strokeStyle=COLORS.outline; ctx.strokeRect(p.x,p.y,p.w,p.h);
-    drawPalletProgress(p);
-    ctx.fillStyle=COLORS.text; ctx.font='16px sans-serif'; ctx.fillText(`${p.boxes}`, p.x+8, p.y+24);
-  });
-  state.crew.forEach(w=>{
-    if(!w.visible) return;
-    drawStatusBadge(w);
-    ctx.beginPath();
-    const scale=1+w.pulse*0.1; // Pulse effect
-    ctx.save(); ctx.translate(w.x,w.y); ctx.scale(scale,scale);
-    ctx.fillStyle=w.selected?COLORS.workerSel:COLORS.worker;
-    ctx.arc(0,0,w.r,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle=COLORS.outline; ctx.stroke();
-    ctx.restore();
-    ctx.fillStyle='#fff'; ctx.font='bold 13px sans-serif'; ctx.fillText(w.name, w.x-22, w.y+w.r+14);
-  });
-  ctx.restore();
+ ctx.clearRect(0,0,900,630);
+ const floor=ctx.createLinearGradient(0,0,0,630);floor.addColorStop(0,'#354f59');floor.addColorStop(1,'#64716a');ctx.fillStyle=floor;ctx.fillRect(0,0,900,630);
+ for(let y=100;y<630;y+=45)for(let x=0;x<900;x+=60){rect(x,y,59,1,'#29434a55');rect(x,y,1,44,'#81918530');}
+ // Warehouse wall, industrial lights, cables and loading shutter.
+ rect(0,0,900,86,'#203843');rect(0,78,900,9,'#142c36');
+ for(let x=12;x<900;x+=70){rect(x,0,3,77,'#405967');rect(x+3,0,2,77,'#172e39');}
+ rect(20,52,265,10,'#536e73');rect(20,65,265,5,'#142d35');rect(623,52,257,10,'#536e73');
+ for(const x of [50,655]){ctx.save();ctx.shadowColor='#b8fff0';ctx.shadowBlur=22;rect(x,18,180,7,'#d3f2df');ctx.restore();rect(x-4,13,188,4,'#6f8687');}
+ rect(372,0,160,90,'#142b35');for(let yy=5;yy<90;yy+=12){rect(382,yy,140,8,'#536b74');rect(382,yy+8,140,3,'#293f4b');}
+ text('LAB / 137',32,108,14,'#a9cabd');text('AFTER HOURS',870,108,12,'#a9cabd','right');
+ // Painted safety lanes and stacks of freight.
+ ctx.strokeStyle='#c5b477';ctx.lineWidth=3;ctx.setLineDash([12,9]);ctx.strokeRect(30,209,242,241);ctx.strokeRect(630,209,242,241);ctx.setLineDash([]);
+ for(const x of [40,735]){rect(x,520,112,14,'#82664c');for(let i=0;i<3;i++){rect(x+i*35,530,18,7,'#3d3934');rect(x+4+i*34,484,31,35,'#bc8b59');rect(x+4+i*34,484,31,5,'#dfb483');rect(x+16+i*34,484,5,35,'#ead5a8');}rect(x+22,451,58,33,'#c69968');rect(x+46,451,6,33,'#dfca9b');}
+ // Small breakroom notice, wall clock, coffee and a rolling cart.
+ rect(47,134,140,42,'#253e45');rect(51,138,132,34,'#8b846b');text('NO PAPERWORK',117,158,11,'#f2e5c5','center');text('JUST FREIGHT',117,169,9,'#e0d9ba','center');
+ oval(788,153,24,24,'#182f3b');oval(788,153,20,20,'#d4dcc7');rect(786,137,3,17,'#365058');rect(788,151,12,3,'#365058');
+ rect(650,466,203,7,'#789095');rect(650,451,6,27,'#93a9aa');rect(847,451,6,27,'#93a9aa');
+ station(150,325,'home');station(750,325,'cloth');station(450,143,'decor');
+ // Belt housing, rollers and lit guide rails.
+ rect(365,35,170,531,'#162c36');rect(382,38,136,510,'#2b424d');
+ for(let y=40;y<548;y+=22){const offset=mode==='playing'&&!keyOpen?(elapsed*(slow>0?24:55))%22:0;rect(387,y+offset,126,7,'#708c90');rect(387,y+offset,126,2,'#a0b6b2');rect(387,y+offset+7,126,3,'#203841');}
+ rect(368,34,12,530,'#8daba9');rect(521,34,12,530,'#8daba9');rect(371,35,3,530,'#c0d4c5');rect(526,35,3,530,'#c0d4c5');
+ ctx.save();ctx.shadowColor=slow>0?'#ffd28a':'#78e9d3';ctx.shadowBlur=12;rect(364,98,3,410,slow>0?'#ffd28a':'#78d9c7');rect(533,98,3,410,slow>0?'#ffd28a':'#78d9c7');ctx.restore();
+ rect(375,520,150,40,'#c99c5c');for(let x=375;x<525;x+=20)poly([[x,520],[x+10,520],[x+20,560],[x+10,560]],'#303b39');
+ rect(389,42,122,28,'#1a3339');text(slow>0?'🍕 PIZZA TIME':'TRUCK DOCK',450,61,12,slow>0?'#ffd293':'#acc7bc','center');
+const target=front();boxes.slice().sort((a,b)=>a.y-b.y).forEach(b=>{if(b===target){ctx.save();ctx.shadowColor='#c9ffe9';ctx.shadowBlur=10;ctx.strokeStyle='#edffe2';ctx.lineWidth=2;ctx.strokeRect(399,b.y-46,102,92);ctx.restore();}merchandise(450,b.y,b);});
+flights.forEach(f=>{const t=f.t,e=1-(1-t)*(1-t);ctx.save();ctx.strokeStyle=PALETTES[f.kind]+'70';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(450,f.fromY);ctx.quadraticCurveTo((450+f.dest.x)/2,Math.min(f.fromY,f.dest.y)-75,450+(f.dest.x-450)*e,f.fromY+(f.dest.y-f.fromY)*e-Math.sin(t*Math.PI)*65);ctx.stroke();ctx.restore();merchandise(450+(f.dest.x-450)*e,f.fromY+(f.dest.y-f.fromY)*e-Math.sin(t*Math.PI)*65,f,1-t*.45);});
+particles.forEach(p=>{ctx.globalAlpha=p.t/.5;rect(p.x,p.y,5,5,p.color);});ctx.globalAlpha=1;worker(450,605);text('DANNY',450,623,10,'#cee1d1','center');
+popups.forEach(p=>{ctx.globalAlpha=p.t;ctx.save();ctx.shadowColor='#142a34';ctx.shadowBlur=6;text(p.text,p.x+60,p.y,24,p.color);ctx.restore();});ctx.globalAlpha=1;
+if(combo>=5){rect(30,585,210,28,'#18333c');text(combo+'× COMBO / ON FIRE',135,605,13,'#ffe0a4','center');}
+if(target){text('SORT THIS ITEM',270,Math.max(84,Math.min(490,target.y)),12,'#eff5df','right');}if(flash>0){ctx.fillStyle=`rgba(238,115,95,${flash})`;ctx.fillRect(0,0,900,630);}if(mode==='ready')text('11 PALLETS. ZERO PAPERWORK.',450,480,24,'#fff1c9','center');}
+function loop(ts){const dt=last?Math.min((ts-last)/1000,.05):0;last=ts;update(dt);draw();requestAnimationFrame(loop);}
+let keyOpen=false,keyFocus=null;
+function openKey(){if(keyOpen)return;keyFocus=document.activeElement;keyOpen=true;$('itemKey').hidden=false;$('closeKey').focus();}
+function closeKey(){keyOpen=false;$('itemKey').hidden=true;(keyFocus||$('key')).focus();}
+function buildKey(){
+ const host=$('keyItems');
+ for(const kind of KINDS){const group=document.createElement('section');group.className='key-group';const heading=document.createElement('h3');heading.textContent=LABELS[kind];heading.style.color=PALETTES[kind];group.append(heading);const grid=document.createElement('div');grid.className='key-grid';
+ MERCH[kind].forEach((item,i)=>{const card=document.createElement('div');card.className='item-card';const picture=document.createElement('canvas');picture.width=120;picture.height=120;picture.setAttribute('aria-hidden','true');const label=document.createElement('span');label.textContent=ITEM_NAMES[item];card.append(picture,label);grid.append(card);const original=ctx;ctx=picture.getContext('2d');merchandise(60,59,{kind,item,color:ITEM_COLORS[i],pattern:i%3,pizza:false});ctx=original;});group.append(grid);host.append(group);}
 }
-function clientToWorld(cx,cy){
-  const cw=canvasEl.clientWidth,ch=canvasEl.clientHeight;
-  const sx=cw/WORLD.w, sy=ch/WORLD.h, s=Math.min(sx,sy), ox=(cw-WORLD.w*s)/2, oy=(ch-WORLD.h*s)/2;
-  return {x:(cx-ox)/s,y:(cy-oy)/s};
-}
-function showTooltip(w,cx,cy){
-  const tooltip=document.getElementById('tooltip');
-  if(!w){
-    tooltip.style.display='none'; return;
-  }
-  tooltip.style.display='block';
-  tooltip.innerHTML=`<b>${w.name}</b><br>Status: ${w.status}<br>Fatigue: ${Math.round(w.fatigue)}%`;
-  const rect=canvasEl.getBoundingClientRect();
-  tooltip.style.left=`${cx+rect.left+10}px`;
-  tooltip.style.top=`${cy+rect.top+10}px`;
-}
-
-/* ========= MAIN ========= */
-let __started=false;
-function ensureStart(reason){
-  if(__started) return; __started=true;
-  try{
-    startGame();
-    const t=document.getElementById('ticker'); if(t) t.textContent='Starting ('+reason+')…';
-  }catch(e){
-    const t=document.getElementById('ticker');
-    if(t) t.textContent='⚠️ start error: '+(e&&e.message?e.message:String(e));
-    showOverlay('Start Error', (e&&e.message?e.message:String(e)), 2200);
-  }
-}
-function setupCanvas(){
-  canvasEl=document.getElementById('game'); ctx=canvasEl.getContext('2d');
-  const wrap=document.getElementById('canvaswrap');
-  const resize=()=>{
-    const r=wrap.getBoundingClientRect();
-    canvasEl.style.width=r.width+'px';
-    canvasEl.style.height=Math.max(320,(window.innerHeight-r.top-90))+'px';
-  };
-  window.addEventListener('resize',resize); resize();
-  const onPointer=(e)=>{
-    e.preventDefault();
-    const rect=canvasEl.getBoundingClientRect();
-    const cx=(e.touches?e.touches[0].clientX:e.clientX)-rect.left, cy=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
-    const {x,y}=clientToWorld(cx,cy);
-    const clicked=state.crew.find(w=>w.visible&&Math.hypot(w.x-x,w.y-y)<=w.r);
-    if(clicked) pickWorkerAt(x,y);
-    else commandSelectedToTargetAt(x,y);
-  };
-  const onMove=(e)=>{
-    const rect=canvasEl.getBoundingClientRect();
-    const cx=(e.touches?e.touches[0].clientX:e.clientX)-rect.left, cy=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
-    const {x,y}=clientToWorld(cx,cy);
-    const w=state.crew.find(w=>w.visible&&Math.hypot(w.x-x,w.y-y)<=w.r);
-    showTooltip(w,cx,cy);
-  };
-  canvasEl.addEventListener('mousedown',onPointer);
-  canvasEl.addEventListener('touchstart',onPointer,{passive:false});
-  canvasEl.addEventListener('mousemove',onMove);
-  canvasEl.addEventListener('touchmove',onMove,{passive:false});
-  canvasEl.addEventListener('mouseleave',()=>{ showTooltip(null,0,0); });
-}
-function gameLoop(ts){
-  if(!lastTick) lastTick=ts; const dt=ts-lastTick; lastTick=ts;
-  if(!state.paused) tick(dt);
-  requestAnimationFrame(gameLoop);
-}
-function initApp(){
-  try{
-    setupCanvas();
-    requestAnimationFrame(gameLoop);
-    const btnStart=document.getElementById('btnStart');
-    const btnAssign=document.getElementById('btnAssign');
-    const btnHelp=document.getElementById('btnHelp');
-    const btnPause=document.getElementById('btnPause');
-    const btnSfx=document.getElementById('btnSfx');
-    const btnForce=document.getElementById('btnForce');
-    const btnRest=document.getElementById('btnRest');
-    if(btnStart){ btnStart.addEventListener('click', ()=>ensureStart('button')); }
-    if(btnAssign){
-      btnAssign.addEventListener('click', ()=>{
-        state.crew.forEach(w=>{
-          if(!w.visible||w.status!=='work') return;
-          if(w.task&&(w.task.kind==='workPallet'||w.task.kind==='bringPallet')) return;
-          assignShuttle(w);
-        });
-        log('Assigned all available workers to pallets.');
-      });
-    }
-    if(btnHelp){
-      btnHelp.addEventListener('click', ()=>{
-        showOverlay('How to Play','Tap a worker, then tap a target. Pallet Door brings pallets (max 3). Tap a pallet to shuttle boxes. Empty full trash into compacter. Compact at 4. Swap full bins/shelves/racks. Rest workers to reduce fatigue.',1600);
-      });
-    }
-    if(btnPause){
-      btnPause.addEventListener('click', (e)=>{
-        state.paused=!state.paused; e.target.textContent=state.paused?'Resume':'Pause';
-      });
-    }
-    if(btnSfx){
-      btnSfx.addEventListener('click', (e)=>{
-        SFX_ENABLED=!SFX_ENABLED; if(SFX_ENABLED) sfxInit();
-        e.target.textContent='SFX: '+(SFX_ENABLED?'On':'Off');
-      });
-    }
-    if(btnForce){ btnForce.addEventListener('click', ()=>ensureStart('force')); }
-    if(btnRest){
-      btnRest.addEventListener('click', ()=>{
-        if(state.selectedWorker) startRest(state.selectedWorker);
-        else log('Select a worker to rest.');
-      });
-    }
-    const cv=document.getElementById('game'); if(cv){ cv.addEventListener('click', ()=>ensureStart('canvas')); }
-    window.addEventListener('keydown', (e)=>{ if(e.key.toLowerCase()==='n') ensureStart('key'); });
-    setTimeout(()=>{ if(!__started) ensureStart('auto'); }, 1200);
-    const bootTimer=setInterval(()=>{ if(__started){ clearInterval(bootTimer); } else { ensureStart('retry'); } }, 800);
-    const t=document.getElementById('ticker'); if(t) t.textContent='Ready — press New Game to start.';
-  }catch(e){
-    const t=document.getElementById('ticker');
-    if(t) t.textContent='⚠️ initApp: '+(e&&e.message?e.message:String(e));
-    showOverlay('Init Error', (e&&e.message?e.message:String(e)), 2400);
-  }
-}
-if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', initApp); } else { initApp(); }
-</script>
-</body>
-</html>
+$('key').onclick=openKey;$('closeKey').onclick=closeKey;$('keyDone').onclick=closeKey;
+window.addEventListener('keydown',e=>{if(!keyOpen)return;if(e.key==='Escape'){e.preventDefault();closeKey();}else if(e.key==='Tab'){e.preventDefault();(document.activeElement===$('closeKey')?$('keyDone'):$('closeKey')).focus();}});
+$('start').onclick=()=>mode==='paused'?pause():reset(mode==='ended'&&lastWon);$('pause').onclick=pause;$('sound').onclick=()=>{sound=!sound;$('sound').textContent=sound?'Sound on':'Sound off';$('sound').setAttribute('aria-pressed',String(sound));if(sound)beep(true);};document.querySelectorAll('[data-kind]').forEach(b=>b.onclick=()=>sort(b.dataset.kind));
+window.addEventListener('keydown',e=>{if(keyOpen||e.repeat)return;const mapping={ArrowLeft:'home',ArrowUp:'decor',ArrowRight:'cloth',a:'home',w:'decor',d:'cloth'};if(mapping[e.key]){e.preventDefault();sort(mapping[e.key]);}else if(e.code==='Space'&&['playing','paused'].includes(mode)){e.preventDefault();pause();}});
+let pointer=null;canvas.addEventListener('pointerdown',e=>{pointer={id:e.pointerId,x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);});canvas.addEventListener('pointerup',e=>{if(!pointer||pointer.id!==e.pointerId)return;const dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;pointer=null;if(Math.max(Math.abs(dx),Math.abs(dy))<20)return;if(Math.abs(dx)>Math.abs(dy))sort(dx<0?'home':'cloth');else if(dy<0)sort('decor');});canvas.addEventListener('pointercancel',()=>pointer=null);
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='playing')pause();});buildKey();hud();requestAnimationFrame(loop);
+</script></body></html>
