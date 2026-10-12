@@ -1,5 +1,5 @@
 const fs=require('node:fs'),vm=require('node:vm');
-const elements=new Map(),buttons=[];function el(){return {hidden:false,style:{},textContent:'',disabled:false,dataset:{},focus(){document.activeElement=this},append(){},setAttribute(){},addEventListener(){},setPointerCapture(){},getContext(){return new Proxy({},{get:()=>()=>{},set:()=>true})}};}
+const elements=new Map(),buttons=[];function el(){return {hidden:false,style:{},textContent:'',disabled:false,dataset:{},focus(){document.activeElement=this},append(){},setAttribute(){},addEventListener(){},setPointerCapture(){},getContext(){return new Proxy({},{get:(o,k)=>k==='createLinearGradient'?()=>({addColorStop(){}}):()=>{},set:()=>true})}};}
 const document={createElement:el,hidden:false,getElementById(id){if(!elements.has(id))elements.set(id,el());return elements.get(id)},querySelectorAll(){return buttons},addEventListener(){}};
 const sandbox={document,window:{addEventListener(){}},localStorage:{getItem(){return null},setItem(){}},requestAnimationFrame(){},console,Math};vm.createContext(sandbox);const html=fs.readFileSync(process.argv[2]||'index.html','utf8');vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],sandbox);
 vm.runInContext(`
