@@ -1,34 +1,17 @@
-# Backroom Blitzz
+# Backroom Blitzz — Belt Panic
 
-A browser-based retail backroom unloading and crew-management simulation.
-
-Assign a crew, work through pallets and boxes, keep processing areas under control, manage trash and the compactor, and try to finish the shift without letting stress overwhelm the operation.
+A fast, simple retail backroom arcade game by Danny Morgan / LAB-137.
 
 ## Play
 
-Download `index.html` and open it in a modern desktop or tablet browser. No build step is required.
+Open `index.html` in a browser. No installation, dependencies or build step.
 
-## Gameplay systems
+Sort the front carton into Home, Decor or Clothing before it falls off the conveyor. Tap the three department buttons, use left/up/right arrow keys (or A/W/D), or swipe left/up/right on the floor. Correct throws build a score combo. Five mistakes end the shift. Resolve 88 cartons across 11 pallets to clear the truck. Pizza cartons award six seconds of slow motion when sorted correctly.
 
-- Crew assignment and worker selection
-- Pallet and box-processing simulation
-- Shift clock and multi-day progression
-- Stress management
-- Trash-can and compactor capacity
-- Home Goods bins, decor shelves, and clothing racks
-- Rest and recovery
-- Random shift events and callaways
-- Pizza speed bonuses
-- Pause, sound, help, and diagnostic controls
+Space or Pause freezes the game. Switching away from the page automatically pauses. Sound is optional and off by default. Personal best is stored locally when browser storage is available.
 
-## Goal
+The original crew-management prototype is preserved in `classic.html`.
 
-Balance people, workload, capacity, and time. Moving every worker to the pallets may increase unloading speed, but neglected processing areas and rising stress can create new problems.
+## Checks
 
-## Project status
-
-Playable experimental simulation, version 16.1. It is a compact prototype contained in a single HTML file.
-
-## About
-
-Created by Danny Morgan / LAB-137 from firsthand knowledge of retail backroom operations. It is an independent fictional simulation and is not an official product of any retailer.
+Run `node tests/arcade.cjs`. Covers correct and wrong sorting, dropped boxes, pause, pizza, full truck wins, losses, restart and drawing calls with a mock canvas. Browser visual and touch verification remains outstanding.
