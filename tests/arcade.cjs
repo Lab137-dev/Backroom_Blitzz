@@ -10,6 +10,7 @@ pause();const time=elapsed;update(1);if(elapsed!==time||mode!=='paused')throw Er
 spawn();front().y=531;update(.01);if(lives!==3)throw Error('miss');
 reset();spawned=18;boxes=[];spawn();sort(front().kind);if(slow!==6)throw Error('pizza');
 reset();while(mode==='playing'){if(!boxes.length)spawn();sort(front().kind);}if(resolved!==88||score<=0||lives!==5||mode!=='ended')throw Error('win');
+const wonScore=score;reset(true);if(level!==2||score!==wonScore||lives!==5||resolved!==0)throw Error('next shift');const y2=front().y;update(.05);const move2=front().y-y2;reset();const y1=front().y;update(.05);if(move2<=front().y-y1)throw Error('level difficulty');
 reset();while(mode==='playing'){if(!boxes.length)spawn();sort(KINDS.find(k=>k!==front().kind));}if(lives!==0||resolved!==5)throw Error('loss');
 for(const kind of KINDS)for(const item of MERCH[kind])for(let pattern=0;pattern<3;pattern++)merchandise(450,300,{kind,item,color:ITEM_COLORS[pattern],pattern,pizza:true});
 for(let i=0;i<50;i++){reset();const b=front();if(!MERCH[b.kind].includes(b.item)||!ITEM_COLORS.includes(b.color))throw Error('merchandise mapping');}
