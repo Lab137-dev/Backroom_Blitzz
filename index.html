@@ -1,48 +1,9 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<title>Backroom Unload — v16.1</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, "/>
+<title>Backroom Blitzz — Living Backroom</title>
 <style>
 :root{--bg:#0f1320;--panel:#151a2b;--accent:#59d;--accent2:#7ddc83;--text:#e8ecff;--muted:#9aa3c7;}
 *{box-sizing:border-box} html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
@@ -75,12 +36,19 @@ button:active{transform:translateY(1px)}
 .overlay .panel p{margin:.25rem 0 0 0;color:#9aa3c7}
 #tooltip{position:absolute;display:none;background:#151a2b;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:.5rem;font-size:.85rem;color:#e8ecff;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:1000}
 @media (max-width:900px){#gamepanel{grid-template-columns:1fr}#leftpanel{order:2}}
+
+:root{--bg:#101b26;--panel:#192a38;--accent:#287e89;--accent2:#75ddad;--muted:#a0b6c4}
+html,body{height:auto;min-height:100%} #wrap{min-height:100vh;height:auto}
+.brand{grid-column:1/-1;display:flex;gap:20px;align-items:center;padding:16px 8px 8px}.brand span{font:800 12px monospace;letter-spacing:2px;color:#85e5c7;border:1px solid #477065;padding:10px}.brand h1{font-size:25px;margin:0;letter-spacing:3px}.brand em{font-style:normal;color:#f6ba6e}.brand small{margin-left:auto;color:var(--muted);letter-spacing:2px}
+#topbar{grid-template-columns:2fr 2fr 1fr;padding:12px 20px}.ticker{font-size:14px;border-radius:6px;background:#213440;color:#9fe8cf}
+#gamepanel{grid-template-columns:280px minmax(0,1fr);padding:8px 20px;align-items:start;gap:16px}#leftpanel{border-radius:8px;padding:16px}h3{margin:8px 0;font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#9fe8cf}.row label{width:115px;flex-shrink:0}.bar{flex:1;min-width:40px}#canvaswrap{overflow:hidden;border-radius:8px;background:#253541}#game{touch-action:manipulation}#log{height:140px;font-size:12px;line-height:1.6}button{min-height:44px;border-radius:6px;font-size:12px;box-shadow:none}button:hover{transform:none}.actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.hint{font-size:12px;line-height:1.6;color:var(--muted);margin:0}.crewcard{width:100%;text-align:left;background:#233b49;display:flex;justify-content:space-between;gap:8px;margin-bottom:5px}.crewcard[aria-pressed=true]{outline:2px solid #85e5c7}.crewcard small{color:#b9cad4;font-weight:400}.crewcard:disabled{opacity:.5}#footer{font-size:11px;letter-spacing:2px;padding:16px}#tooltip{position:fixed;pointer-events:none}.overlay .panel{max-width:620px;margin:20px}.overlay button{margin-top:16px}
+@media(max-width:900px){#topbar{grid-template-columns:1fr;padding:10px}#gamepanel{display:flex;flex-direction:column;padding:10px}#canvaswrap{width:100%;order:0}#leftpanel{width:100%;order:1}.brand small{display:none}.brand h1{font-size:20px}#roster{display:grid;grid-template-columns:1fr 1fr;gap:5px}#buttons{justify-content:flex-start}.actions{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
 <div id="wrap">
   <div id="topbar">
-    <div id="ticker" class="ticker">Ready for your shift…</div>
+    <div class="brand"><span>LAB / 137</span><h1>BACKROOM <em>BLITZZ</em></h1><small>KEEP THE FREIGHT FLOWING.</small></div><div id="ticker" class="ticker">Ready for your shift…</div>
     <div id="hud">
       <div class="chip">Day: <b id="day">1</b></div>
       <div class="chip">Time: <b id="time">8:00 AM</b></div>
@@ -96,12 +64,12 @@ button:active{transform:translateY(1px)}
       <button id="btnHelp" class="secondary">How to Play</button>
       <button id="btnPause" class="secondary">Pause</button>
       <button id="btnSfx" class="secondary">SFX: On</button>
-      <button id="btnForce" class="secondary">Force Start (Diag)</button>
+      <button id="btnSpeed" class="secondary">Speed: 1×</button>
       <button id="btnRest" class="secondary">Rest Selected</button>
     </div>
     <div>
       <div class="row"><label>Trash Cans</label><span id="trashPill" class="pill ok">0 / 2 full</span></div>
-      <div class="row"><label>Compacter</label><span id="compPill" class="pill ok">0 / 4</span></div>
+      <div class="row"><label>Compactor</label><span id="compPill" class="pill ok">0 / 4</span></div>
     </div>
   </div>
 
@@ -110,12 +78,12 @@ button:active{transform:translateY(1px)}
       <div class="row"><label>Home Goods Bins</label><div class="bar"><div id="binBar" class="fill" style="width:0%"></div></div></div>
       <div class="row"><label>Decor Shelves</label><div class="bar"><div id="shelfBar" class="fill" style="width:0%"></div></div></div>
       <div class="row"><label>Clothing Racks</label><div class="bar"><div id="rackBar" class="fill" style="width:0%"></div></div></div>
-      <div id="log"></div>
+      <h3>Your crew</h3><div id="roster"></div><h3 id="selection">Select a worker</h3><div class="actions"><button data-job="freight">Unload freight</button><button data-job="home">Clear home bins</button><button data-job="decor">Clear decor</button><button data-job="cloth">Clear clothing</button><button data-job="trash">Haul trash</button><button data-job="compact">Run compactor</button></div><p class="hint">Select a crew card, then a job. You can also tap equipment on the floor.</p><h3>Shift radio</h3><div id="log"></div>
     </div>
     <div id="canvaswrap"><canvas id="game"></canvas></div>
   </div>
 
-  <div id="footer">Backroom Unload — v16.1</div>
+  <div id="footer">Backroom Blitzz — Living Backroom</div>
   <div id="overlay" class="overlay"><div class="panel"><h3 id="overlayTitle">Shift</h3><p id="overlayMsg">Message</p></div></div>
   <div id="tooltip"></div>
 </div>
@@ -177,7 +145,7 @@ const WORLD={w:1600,h:900};
 const DOORS={
   pallet:{x:WORLD.w-120,y:120,w:100,h:60,label:'Pallet Door'},
   crew:{x:220,y:WORLD.h-110,w:110,h:70,label:'Crew Door'},
-  comp:{x:WORLD.w-160,y:WORLD.h-120,w:120,h:70,label:'Compacter'}
+  comp:{x:WORLD.w-160,y:WORLD.h-120,w:120,h:70,label:'Compactor'}
 };
 const COLORS={
   bg:'#1a2036', pallet:'#8b5e3c', worker:'#4aa3ff', workerSel:'#7ec8ff',
@@ -234,7 +202,7 @@ const state={
   ],
   compacter:{count:0,cap:4,x:DOORS.comp.x+DOORS.comp.w/2,y:DOORS.comp.y-20,w:70,h:40},
   palletsActive:[], palletsQueue:0, palletsMaxOnFloor:3,
-  boxesDone:0, stress:0, log:[], sickCount:0,
+  palletsDone:0, palletsTotal:0, boxesDone:0, stress:0, log:[], sickCount:0,
   pizza:{lastDay:-999,active:false,pct:0,startMinute:0,endMinute:0}
 };
 function log(msg){
@@ -319,7 +287,7 @@ function setupDay(carryOver=false){
   state.minute=0; chooseVariant(); schedulePizza();
   state.palletsQueue=rand(6,11);
   if(Math.random()<0.15) state.palletsQueue+=rand(1,2); // Bonus pallets
-  state.palletsActive=leftover; state.boxesDone=0; state.stress=8; // Lower initial stress
+  state.palletsDone=0; state.palletsTotal=state.palletsQueue+leftover.length; state.palletsActive=leftover; state.boxesDone=0; state.stress=8; // Lower initial stress
   state.compacter.count=0; state.trashCans.forEach(t=>t.fill=0);
   layoutContainers(); scheduleCrew(); state.selectedWorker=null;
   log(`Day ${state.level} starts. New pallets: ${state.palletsQueue}. Carryover pallets: ${leftover.length}.`);
@@ -330,18 +298,18 @@ let canvasEl, ctx2, lastTick=0, acc=0;
 function startGame(){
   removedRoster=new Set(); bannedNames=new Set(); daysSinceCut=0;
   state.running=true; state.paused=false; state.level=1;
-  setupDay(false); updateHUD();
+  acc=0; setupDay(false); document.getElementById('btnPause').textContent='Pause'; updateHUD();
   const t=document.getElementById('ticker'); if(t) t.textContent='New game started.';
 }
 function nextDay(){
   state.level++; setupDay(true); updateHUD();
 }
 function updateHUD(){
-  document.getElementById('day').textContent=state.level;
+  renderRoster(); document.getElementById('day').textContent=state.level;
   document.getElementById('time').textContent=fmtTime(state.minute);
   const crewActive=state.crew.filter(w=>w.status!=='sick').length;
-  document.getElementById('crew').textContent=`${crewActive - state.crew.filter(w=>!w.visible).length}/${crewActive}`;
-  document.getElementById('pallets').textContent=`${state.palletsActive.length}/${state.palletsQueue+state.palletsActive.length}`;
+  document.getElementById('crew').textContent=`${state.crew.filter(w=>w.visible&&w.status==='work').length}/${crewActive}`;
+  document.getElementById('pallets').textContent=`${state.palletsDone}/${state.palletsTotal}`;
   document.getElementById('done').textContent=state.boxesDone;
   document.getElementById('stress').textContent=`${Math.round(state.stress)}%`;
   const total=a=>a.reduce((x,b)=>x+b.capacity,0), fill=a=>a.reduce((x,b)=>x+b.fill,0);
@@ -363,7 +331,7 @@ function updateHUD(){
 }
 function tick(dt){
   if(!state.running||state.paused) return;
-  acc+=dt; while(acc>=INGAME_MINUTE_MS){
+  acc+=Math.min(dt,100)*gameSpeed; while(acc>=INGAME_MINUTE_MS){
     acc-=INGAME_MINUTE_MS; try{ simMinute(); }catch(e){ reportError('simMinute',e); }
   }
   try{ draw(); }catch(e){ reportError('draw',e); }
@@ -393,7 +361,7 @@ function startRest(w){
   log(`${w.name} resting (30 min). Fatigue will decrease.`);
 }
 function maybeBackFromBreak(w){
-  if((w.status==='break'||w.status==='assist'||w.status==='rest')&&state.minute>=w.nextStatusChange){
+  if((w.status==='break'||w.status==='assist'||w.status==='rest')&&!bannedNames.has(w.name)&&state.minute>=w.nextStatusChange){
     w.visible=true; w.task={kind:'enterDoor',tx:DOORS.crew.x+DOORS.crew.w+40,ty:DOORS.crew.y-40};
     w.status='work'; w.fatigue=Math.max(0,w.fatigue-30); // Reduce fatigue
     log(`${w.name} returned${w.status==='rest'?'. Fatigue reduced.':'.'}`);
@@ -409,6 +377,7 @@ function moveTowards(w,tx,ty,sprint=false){
   w.x=tx; w.y=ty; return true;
 }
 function simMinute(){
+  state.crew.forEach(w=>{w.prevX=w.x;w.prevY=w.y;});
   state.minute++;
   if(state.pizza && !state.pizza.active && state.minute===state.pizza.startMinute){
     state.pizza.active=true; log(`🍕 Pizza arrived! +${state.pizza.pct}% speed for 2 hours.`); sfx('pizza');
@@ -447,7 +416,7 @@ function simMinute(){
   // Arrivals & temp departures
   state.crew.forEach(w=>{
     if(w.status==='sick') return;
-    if(!w.visible && state.minute>=w.arrival){
+    if(!w.visible && w.status==='off' && state.minute>=w.arrival && !bannedNames.has(w.name)){
       w.visible=true; w.status='work'; w.task={kind:'enterDoor',tx:DOORS.crew.x+DOORS.crew.w+40,ty:DOORS.crew.y-40};
       log(`${w.name} clocked in.`);
     }
@@ -577,7 +546,7 @@ function shuttleBox(w){
         if(least) least.fill=clamp(least.fill+2,0,least.cap); sfx('box');
         log(`${w.name} stocked 1 box to ${t.targetContainer.kind}.`);
         if(p.boxes<=0){
-          p.active=false; state.palletsActive=state.palletsActive.filter(pp=>pp.active);
+          state.palletsDone++; p.active=false; state.palletsActive=state.palletsActive.filter(pp=>pp.active);
           log(`Pallet finished.`); sfx('palletDone'); w.task=null; w.busy=false; assignShuttle(w);
           return;
         }
@@ -629,7 +598,7 @@ function commandSelectedToTargetAt(x,y){
     if(state.compacter.count>=state.compacter.cap){
       w.task={kind:'compact',tx:DOORS.comp.x+DOORS.comp.w/2,ty:DOORS.comp.y+DOORS.comp.h/2};
       w.busy=true; log(`${w.name} heading to compact.`);
-    } else { log('Compacter not full enough to run (fills to 4).'); }
+    } else { log('Compactor not full enough to run (fills to 4).'); }
     return;
   }
   const p=state.palletsActive.find(pp=>containsRect(pp,x,y));
@@ -685,60 +654,69 @@ function drawStatusBadge(w){
     ctx.fillStyle='#111'; ctx.fillText(badgeText,bx+pad,byPos+16);
   }
 }
+function pixel(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h);}
+function label(text,x,y,color='#bbd0d5',size=15){ctx.fillStyle=color;ctx.font=`bold ${size}px monospace`;ctx.fillText(text,x,y);}
+function box(x,y,size=24){pixel(x+4,y+size,size,5,'#263339');pixel(x,y,size,size,'#c49159');pixel(x,y,size,5,'#e9b779');pixel(x+size-5,y,5,size,'#986c43');pixel(x+size/2-2,y,4,size,'#eed0a0');}
+function meter(x,y,w,pct){pixel(x,y,w,6,'#16272e');pixel(x,y,w*Math.min(1,pct),6,pct>=1?'#f08c76':'#85dfb2');}
 function draw(){
-  const cw=canvasEl.clientWidth, ch=canvasEl.clientHeight;
-  if(canvasEl.width!==cw||canvasEl.height!==ch){ canvasEl.width=cw; canvasEl.height=ch; }
-  ctx.clearRect(0,0,cw,ch); ctx.save();
-  const sx=cw/WORLD.w, sy=ch/WORLD.h, s=Math.min(sx,sy), ox=(cw-WORLD.w*s)/2, oy=(ch-WORLD.h*s)/2;
-  ctx.translate(ox,oy); ctx.scale(s,s);
-  ctx.fillStyle=COLORS.bg; ctx.fillRect(0,0,WORLD.w,WORLD.h);
-  ctx.strokeStyle=COLORS.outline; ctx.lineWidth=2; ctx.strokeRect(0,0,WORLD.w,WORLD.h);
-  drawDoor(DOORS.pallet); drawDoor(DOORS.crew);
-  ctx.fillStyle=COLORS.comp; ctx.fillRect(DOORS.comp.x,DOORS.comp.y,DOORS.comp.w,DOORS.comp.h);
-  ctx.strokeStyle=COLORS.outline; ctx.strokeRect(DOORS.comp.x,DOORS.comp.y,DOORS.comp.w,DOORS.comp.h);
-  ctx.fillStyle=COLORS.text; ctx.font='20px sans-serif'; ctx.fillText('Compacter', DOORS.comp.x-10, DOORS.comp.y-8);
-  function drawContainers(arr,color,tag){
-    arr.forEach(c=>{
-      ctx.fillStyle=color; ctx.fillRect(c.x-c.w/2,c.y-c.h/2,c.w,c.h);
-      ctx.strokeStyle=COLORS.outline; ctx.strokeRect(c.x-c.w/2,c.y-c.h/2,c.w,c.h);
-      const pct=c.fill/Math.max(1,c.capacity);
-      ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fillRect(c.x-c.w/2,c.y+c.h/2-10,c.w,10);
-      ctx.fillStyle='#8de0a2'; ctx.fillRect(c.x-c.w/2,c.y+c.h/2-10,c.w*pct,10);
-      ctx.fillStyle=COLORS.text; ctx.font='12px sans-serif'; ctx.fillText(tag,c.x-c.w/2+2,c.y-c.h/2-8);
-    });
-  }
-  drawContainers(state.bins, COLORS.bin, 'BINS (Home)');
-  drawContainers(state.shelves, COLORS.shelf, 'SHELVES (Decor)');
-  drawContainers(state.racks, COLORS.rack, 'RACKS (Clothing)');
-  state.trashCans.forEach(t=>{
-    ctx.fillStyle=COLORS.trash; ctx.fillRect(t.x-t.w/2,t.y-t.h/2,t.w,t.h);
-    ctx.strokeStyle=COLORS.outline; ctx.strokeRect(t.x-t.w/2,t.y-t.h/2,t.w,t.h);
-    const pct=t.fill/t.cap; ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fillRect(t.x-t.w/2,t.y+t.h/2-10,t.w,10);
-    ctx.fillStyle='#f6b73c'; ctx.fillRect(t.x-t.w/2,t.y+t.h/2-10,t.w*pct,10);
-    ctx.fillStyle=COLORS.text; ctx.font='12px sans-serif'; ctx.fillText('TRASH', t.x-18, t.y-t.h/2-8);
+  const cw=canvasEl.clientWidth,ch=canvasEl.clientHeight,dpr=Math.min(window.devicePixelRatio||1,2);
+  if(canvasEl.width!==Math.round(cw*dpr)||canvasEl.height!==Math.round(ch*dpr)){canvasEl.width=Math.round(cw*dpr);canvasEl.height=Math.round(ch*dpr);}
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,cw,ch);ctx.save();
+  const s=Math.min(cw/WORLD.w,ch/WORLD.h);ctx.translate((cw-WORLD.w*s)/2,(ch-WORLD.h*s)/2);ctx.scale(s,s);ctx.imageSmoothingEnabled=false;
+  pixel(0,0,1600,900,'#536367');
+  for(let y=75;y<900;y+=60)for(let x=0;x<1600;x+=80){pixel(x,y,79,59,(x/80+y/60)%2<1?'#536367':'#56666a');pixel(x,y,79,1,'#48595f');}
+  pixel(0,0,1600,60,'#293e48');pixel(0,60,1600,14,'#21323c');
+  for(let x=40;x<1500;x+=300){pixel(x,20,180,8,'#b6d9d5');pixel(x,28,180,4,'#6c9597');}
+  label('LAB-137 / RECEIVING',480,45,'#a5d4cc',22);
+  // Painted traffic lanes and roller conveyor: decorative receiving equipment.
+  ctx.strokeStyle='#cbb576';ctx.lineWidth=4;ctx.setLineDash([24,18]);ctx.strokeRect(1050,110,365,390);ctx.setLineDash([]);
+  pixel(470,420,590,80,'#263b43');pixel(475,425,580,65,'#71888c');
+  for(let x=480;x<1050;x+=20){pixel(x,428,8,58,'#abc0bf');pixel(x+8,428,3,58,'#4b656d');}
+  for(let x=490;x<1050;x+=180){pixel(x,500,12,35,'#253d48');}
+  label('SORTING BELT',650,555,'#d7dfcc',18);
+  label('PROCESSING',95,166,'#d7dfcc',20);label('RECEIVING',1110,105,'#d7dfcc',20);
+  [DOORS.pallet,DOORS.crew].forEach(d=>{pixel(d.x-6,d.y-6,d.w+12,d.h+12,'#1c303b');pixel(d.x,d.y,d.w,d.h,'#718a91');for(let y=d.y;y<d.y+d.h;y+=10)pixel(d.x,y,d.w,3,'#4c6771');label(d===DOORS.pallet?'TRUCK DOCK':'BREAK ROOM',d.x-22,d.y-16,'#f0cf91');});
+  pixel(DOORS.comp.x,DOORS.comp.y,DOORS.comp.w,DOORS.comp.h,'#315c60');pixel(DOORS.comp.x+10,DOORS.comp.y+12,100,35,'#172f3a');pixel(DOORS.comp.x+100,DOORS.comp.y+5,12,8,state.compacter.count>=4?'#f18e76':'#8ae1a7');label('COMPACTOR',DOORS.comp.x-10,DOORS.comp.y-18);meter(DOORS.comp.x,DOORS.comp.y+80,120,state.compacter.count/4);
+  [...state.bins,...state.shelves,...state.racks].forEach(c=>{
+    const x=c.x-30,y=c.y-30;pixel(x+5,y+65,60,7,'#384b51');
+    if(c.kind==='decor'){pixel(x,y,6,60,'#344e58');pixel(x+54,y,6,60,'#344e58');for(let z=0;z<3;z++){pixel(x,y+z*22,60,5,'#b0926a');for(let i=0;i<3;i++){pixel(x+9+i*16,y+z*22+7,10,12,['#e3bf87','#8cbcaf','#d4957e'][i]);}}}
+    else if(c.kind==='cloth'){pixel(x,y,60,5,'#b1c4c9');pixel(x,y,5,60,'#7f969e');pixel(x+55,y,5,60,'#7f969e');for(let i=0;i<5;i++){const xx=x+7+i*9;pixel(xx,y+8,7,36,['#719bcb','#c494ae','#e0bf82','#87b7a3','#acadd0'][i]);pixel(xx+2,y+5,3,4,'#cbd9db');}}
+    else{pixel(x,y,60,60,'#537f79');pixel(x+4,y+4,52,12,'#284b50');pixel(x+4,y+20,52,3,'#88aca0');pixel(x+4,y+40,52,3,'#88aca0');if(c.fill)box(x+15,y+8,22);}
+    label(c.kind.toUpperCase(),x-3,y-12);meter(x,y+72,60,c.fill/c.capacity);label(`${c.fill}/${c.capacity}`,x,y+94,'#deece7',12);
   });
-  state.palletsActive.forEach(p=>{
-    ctx.fillStyle=COLORS.pallet; ctx.fillRect(p.x,p.y,p.w,p.h);
-    if(p.active&&p.boxes>0){
-      ctx.strokeStyle=COLORS.activePalletGlow; ctx.lineWidth=4; ctx.strokeRect(p.x-2,p.y-2,p.w+4,p.h+4);
-    }
-    ctx.strokeStyle=COLORS.outline; ctx.strokeRect(p.x,p.y,p.w,p.h);
-    drawPalletProgress(p);
-    ctx.fillStyle=COLORS.text; ctx.font='16px sans-serif'; ctx.fillText(`${p.boxes}`, p.x+8, p.y+24);
+  state.trashCans.forEach(t=>{pixel(t.x-20,t.y-20,40,40,'#a36c60');pixel(t.x-23,t.y-24,46,7,'#d19a7b');pixel(t.x-14,t.y-12,4,28,'#674d4c');pixel(t.x+10,t.y-12,4,28,'#674d4c');meter(t.x-20,t.y+26,40,t.fill/t.cap);label('TRASH',t.x-24,t.y-34,'#e6be9b',12);});
+  state.palletsActive.forEach(p=>{pixel(p.x,p.y+56,70,16,'#876547');for(let i=0;i<3;i++)pixel(p.x+5+i*24,p.y+60,10,6,'#443e35');const n=Math.max(1,Math.ceil(6*p.boxes/p.initialBoxes));for(let i=0;i<n;i++)box(p.x+(i%3)*23,p.y+30-Math.floor(i/3)*24,22);drawPalletProgress(p);});
+  const phase=state.paused?0:performance.now()/110;
+  state.crew.filter(w=>w.visible).sort((a,b)=>a.y-b.y).forEach(w=>{
+    const f=Math.min(1,acc/INGAME_MINUTE_MS),x=(w.prevX??w.x)+(w.x-(w.prevX??w.x))*f,y=(w.prevY??w.y)+(w.y-(w.prevY??w.y))*f;
+    const moving=w.task&&Math.hypot(w.x-(w.prevX??w.x),w.y-(w.prevY??w.y))>1,step=moving?Math.sin(phase+w.id)*4:0;
+    ctx.save();ctx.translate(x,y);ctx.fillStyle='#35484a';ctx.beginPath();ctx.ellipse(0,15,22,8,0,0,Math.PI*2);ctx.fill();
+    if(w.selected){ctx.strokeStyle='#8af3c9';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(0,15,27,12,0,0,Math.PI*2);ctx.stroke();}
+    pixel(-11,1,9,18+step,'#273b55');pixel(3,1,9,18-step,'#273b55');pixel(-13,17+step,12,6,'#182c38');pixel(2,17-step,13,6,'#182c38');
+    const shirts=['#6198ad','#a68cbc','#c69568','#91ad8e','#c8787c','#73bbae'];pixel(-14,-22,28,27,shirts[w.id%6]);pixel(-19,-19,5,20,'#d6a57f');pixel(14,-19,5,20,'#d6a57f');pixel(-11,-45,22,23,'#d9ad89');
+    if(w.name==='Danny'){pixel(-7,-27,14,7,'#b6b9ad');}else{pixel(-12,-48,24,8,w.name==='Alex'||w.name==='Riley-L'?'#343336':'#746252');if(w.name==='Alex'||w.name==='Riley-L')pixel(-14,-42,6,26,'#343336');}
+    pixel(-6,-36,3,3,'#243641');pixel(5,-36,3,3,'#243641');
+    if(w.task?.kind==='workPallet'&&w.task.stage===1)box(-13,-15,27);
+    if(w.task?.kind==='emptyTrash'&&w.task.stage===1){pixel(-15,-15,30,26,'#574f58');}
+    label(w.name,-24,43,w.selected?'#9ff9d6':'#f0ebe0',14);if(w.status!=='work')label(w.status.toUpperCase(),-24,-58,'#f0cf91',12);ctx.restore();
   });
-  state.crew.forEach(w=>{
-    if(!w.visible) return;
-    drawStatusBadge(w);
-    ctx.beginPath();
-    const scale=1+w.pulse*0.1; // Pulse effect
-    ctx.save(); ctx.translate(w.x,w.y); ctx.scale(scale,scale);
-    ctx.fillStyle=w.selected?COLORS.workerSel:COLORS.worker;
-    ctx.arc(0,0,w.r,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle=COLORS.outline; ctx.stroke();
-    ctx.restore();
-    ctx.fillStyle='#fff'; ctx.font='bold 13px sans-serif'; ctx.fillText(w.name, w.x-22, w.y+w.r+14);
-  });
+  if(!state.running)label('YOUR NEXT SHIFT STARTS HERE',530,680,'#e8d3a6',26);
   ctx.restore();
+}
+let gameSpeed=1;
+function renderRoster(){
+ const roster=document.getElementById('roster');
+ const signature=state.crew.map(w=>[w.name,w.status,w.visible,w.selected,w.task?.kind,Math.round(w.fatigue)].join(':')).join('|');
+ if(roster.dataset.signature!==signature){roster.dataset.signature=signature;roster.replaceChildren();state.crew.forEach(w=>{const b=document.createElement('button');b.className='crewcard';b.disabled=!w.visible||w.status!=='work';b.setAttribute('aria-pressed',String(w.selected));const name=document.createElement('span');name.textContent=w.name;const detail=document.createElement('small');detail.textContent=`${w.status==='work'?(w.task?'Busy':'Ready'):w.status} · ${Math.round(w.fatigue)}% tired`;b.append(name,detail);b.onclick=()=>{state.crew.forEach(o=>o.selected=o===w);state.selectedWorker=w;renderRoster();};roster.append(b);});}
+ document.getElementById('selection').textContent=state.selectedWorker?`${state.selectedWorker.name} → choose a job`:'Select a worker';
+ document.querySelectorAll('[data-job]').forEach(b=>b.disabled=!state.selectedWorker||state.selectedWorker.status!=='work');
+}
+function assignJob(job){
+ const w=state.selectedWorker;if(!w||w.status!=='work')return;
+ if(job==='freight'){assignShuttle(w);return;}
+ if(job==='compact'){commandSelectedToTargetAt(DOORS.comp.x+20,DOORS.comp.y+20);return;}
+ const list=job==='trash'?state.trashCans:job==='home'?state.bins:job==='decor'?state.shelves:state.racks;
+ const target=list.find(c=>c.fill>=(c.cap??c.capacity));if(target)commandSelectedToTargetAt(target.x,target.y);else log('Nothing full here yet. Keep unloading!');renderRoster();
 }
 function clientToWorld(cx,cy){
   const cw=canvasEl.clientWidth,ch=canvasEl.clientHeight;
@@ -775,8 +753,8 @@ function setupCanvas(){
   const wrap=document.getElementById('canvaswrap');
   const resize=()=>{
     const r=wrap.getBoundingClientRect();
-    canvasEl.style.width=r.width+'px';
-    canvasEl.style.height=Math.max(320,(window.innerHeight-r.top-90))+'px';
+    canvasEl.style.width='100%';
+    canvasEl.style.height=Math.round(r.width*WORLD.h/WORLD.w)+'px'; draw();
   };
   window.addEventListener('resize',resize); resize();
   const onPointer=(e)=>{
@@ -803,7 +781,7 @@ function setupCanvas(){
 }
 function gameLoop(ts){
   if(!lastTick) lastTick=ts; const dt=ts-lastTick; lastTick=ts;
-  if(!state.paused) tick(dt);
+  if(!state.paused) tick(dt); else draw();
   requestAnimationFrame(gameLoop);
 }
 function initApp(){
@@ -817,7 +795,9 @@ function initApp(){
     const btnSfx=document.getElementById('btnSfx');
     const btnForce=document.getElementById('btnForce');
     const btnRest=document.getElementById('btnRest');
-    if(btnStart){ btnStart.addEventListener('click', ()=>ensureStart('button')); }
+    if(btnStart){ btnStart.addEventListener('click', ()=>{__started=true;startGame();}); }
+    document.getElementById('btnSpeed').onclick=e=>{gameSpeed=gameSpeed===1?2:gameSpeed===2?.5:1;e.target.textContent=`Speed: ${gameSpeed}×`;};
+    document.querySelectorAll('[data-job]').forEach(b=>b.onclick=()=>assignJob(b.dataset.job));
     if(btnAssign){
       btnAssign.addEventListener('click', ()=>{
         state.crew.forEach(w=>{
@@ -830,7 +810,7 @@ function initApp(){
     }
     if(btnHelp){
       btnHelp.addEventListener('click', ()=>{
-        showOverlay('How to Play','Tap a worker, then tap a target. Pallet Door brings pallets (max 3). Tap a pallet to shuttle boxes. Empty full trash into compacter. Compact at 4. Swap full bins/shelves/racks. Rest workers to reduce fatigue.',1600);
+        state.paused=true;document.getElementById('btnPause').textContent='Resume';showOverlay('Run the backroom','Select a worker from the crew cards, then choose a job. Unload freight to move cartons into processing. Clear full bins, shelves and racks; haul full trash cans and run the compactor at 4 loads. Rest tired workers. Finish the freight before 4 PM while keeping stress below 100%.',0);const close=document.createElement('button');close.textContent='Back to shift';close.onclick=()=>{document.getElementById('overlay').style.display='none';close.remove();state.paused=false;document.getElementById('btnPause').textContent='Pause';};document.querySelector('#overlay .panel button')?.remove();document.querySelector('#overlay .panel').append(close);
       });
     }
     if(btnPause){
