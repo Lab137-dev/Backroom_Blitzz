@@ -17,6 +17,7 @@ for(let i=0;i<50;i++){reset();const b=front();if(!MERCH[b.kind].includes(b.item)
 reset();const keyTime=elapsed,keyBoxes=boxes.length;openKey();update(1);sort(front().kind);if(elapsed!==keyTime||boxes.length!==keyBoxes||score!==0)throw Error('key did not freeze gameplay');closeKey();update(.01);if(elapsed<=keyTime)throw Error('key did not resume');
 reset();draw();if(score||resolved||lives!==5||mode!=='playing')throw Error('restart');
 
+for(const won of [true,false]){let prev=null;for(let i=0;i<50;i++){const joke=endJoke(won);if(!joke||joke===prev)throw Error('repeated end joke');prev=joke;}}
 const scheduled=[];const param={value:0,setValueAtTime(v,t){if(!Number.isFinite(v)||!Number.isFinite(t))throw Error('invalid audio');scheduled.push([v,t]);},exponentialRampToValueAtTime(v,t){if(v<=0||!Number.isFinite(t))throw Error('invalid ramp');scheduled.push([v,t]);}};
 const node=()=>({frequency:param,gain:param,Q:{value:0},connect(){},start(){},stop(){}});
 audioCtx={currentTime:0,sampleRate:44100,state:'running',createOscillator:node,createGain:node,createBuffer:(n,len)=>({getChannelData:()=>new Float32Array(len)}),createBufferSource:node,createBiquadFilter:node};sound=true;
