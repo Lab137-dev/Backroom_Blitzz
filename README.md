@@ -1,34 +1,19 @@
-# Backroom Blitzz
+# Backroom Blitzz — After Hours v8
 
-A browser-based retail backroom unloading and crew-management simulation.
+A fast merchandise-sorting arcade game by Danny Morgan / LAB-137.
 
-Assign a crew, work through pallets and boxes, keep processing areas under control, manage trash and the compactor, and try to finish the shift without letting stress overwhelm the operation.
+[Play Backroom Blitzz](https://lab137-dev.github.io/games/backroom-blitzz/)
 
-## Play
+Sort the front item into Home, Decor or Clothing before it falls off the belt. Recognize 15 merchandise shapes in varied colors and patterns. Correct throws build combos; five mistakes end the run. Clear 11 pallets to unlock the next, harder shift. Score carries forward and chances refill.
 
-Download `index.html` and open it in a modern desktop or tablet browser. No build step is required.
+## Controls
 
-## Gameplay systems
+- Tap the department buttons, swipe left/up/right, or use arrow keys / A-W-D.
+- Item key shows the merchandise grouped by department and pauses the belt.
+- Space or Pause freezes gameplay; switching tabs pauses automatically.
+- Sound enables throw whooshes, department landing effects, combo chimes and short pizza/victory jingles.
+- Pizza-marked items give six seconds of slow motion.
 
-- Crew assignment and worker selection
-- Pallet and box-processing simulation
-- Shift clock and multi-day progression
-- Stress management
-- Trash-can and compactor capacity
-- Home Goods bins, decor shelves, and clothing racks
-- Rest and recovery
-- Random shift events and callaways
-- Pizza speed bonuses
-- Pause, sound, help, and diagnostic controls
+Open `index.html` locally to play offline. No dependencies, build step or external assets. Personal best is stored locally when browser storage is available.
 
-## Goal
-
-Balance people, workload, capacity, and time. Moving every worker to the pallets may increase unloading speed, but neglected processing areas and rising stress can create new problems.
-
-## Project status
-
-Playable experimental simulation, version 16.1. It is a compact prototype contained in a single HTML file.
-
-## About
-
-Created by Danny Morgan / LAB-137 from firsthand knowledge of retail backroom operations. It is an independent fictional simulation and is not an official product of any retailer.
+Independent fictional game, not affiliated with any retailer.
